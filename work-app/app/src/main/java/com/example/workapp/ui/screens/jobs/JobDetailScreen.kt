@@ -1,0 +1,814 @@
+package com.example.workapp.ui.screens.jobs
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
+import com.example.workapp.data.model.Job
+import com.example.workapp.data.model.JobStatus
+import com.example.workapp.ui.components.ApplicationSubmissionDialog
+import com.example.workapp.ui.components.JobImage
+import com.example.workapp.ui.theme.AppIcons
+import com.example.workapp.ui.theme.IconSizes
+import com.example.workapp.ui.viewmodel.ApplicationViewModel
+import com.example.workapp.ui.viewmodel.JobViewModel
+import com.example.workapp.ui.viewmodel.SubmitApplicationState
+import com.mapbox.geojson.Point
+import com.mapbox.maps.CameraOptions
+import com.mapbox.maps.extension.compose.MapboxMap
+import com.mapbox.maps.extension.compose.animation.viewport.rememberMapViewportState
+import com.mapbox.maps.extension.compose.annotation.generated.CircleAnnotation
+import com.mapbox.maps.extension.compose.style.MapStyle
+import com.example.workapp.BuildConfig
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+/**
+ * Screen displaying detailed job information
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JobDetailScreen(
+    jobId: String,
+    currentUserId: String?,
+    isCraftsman: Boolean,
+    onNavigateBack: () -> Unit,
+    onNavigateToApplications: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
+    viewModel: JobViewModel = hiltViewModel(),
+    applicationViewModel: ApplicationViewModel = hiltViewModel()
+) {
+    val job by viewModel.currentJob.collectAsState()
+    val hasApplied by applicationViewModel.hasApplied.collectAsState()
+    val applicationCount by applicationViewModel.applicationCount.collectAsState()
+    val submitApplicationState by applicationViewModel.submitApplicationState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+    
+    var showApplicationDialog by remember { mutableStateOf(false) }
+    var isMapVisible by remember { mutableStateOf(true) }
+
+    // Check application status when screen is opened
+    LaunchedEffect(jobId) {
+        if (isCraftsman) {
+            applicationViewModel.checkIfApplied(jobId)
+        } else {
+            applicationViewModel.loadApplicationCount(jobId)
+        }
+    }
+    
+    // Handle application submission state
+    LaunchedEffect(submitApplicationState) {
+        when (submitApplicationState) {
+            is SubmitApplicationState.Success -> {
+                snackbarHostState.showSnackbar("Application submitted successfully!")
+                applicationViewModel.resetSubmitApplicationState()
+                applicationViewModel.checkIfApplied(jobId)
+                showApplicationDialog = false
+            }
+            is SubmitApplicationState.Error -> {
+                snackbarHostState.showSnackbar(
+                    (submitApplicationState as SubmitApplicationState.Error).message
+                )
+                applicationViewModel.resetSubmitApplicationState()
+            }
+            else -> {}
+        }
+    }
+
+    // Clean up when leaving screen
+    DisposableEffect(Unit) {
+        onDispose {
+            // We don't clear current job here as it's handled by ViewModel's SavedStateHandle
+            // But we might want to clear it if we want fresh data on next visit
+            // viewModel.clearCurrentJob()
+            applicationViewModel.resetHasAppliedState()
+            applicationViewModel.resetSubmitApplicationState()
+        }
+    }
+
+    // Handle navigation back with map visibility cleanup
+    val handleNavigateBack = {
+        isMapVisible = false
+        onNavigateBack()
+    }
+    
+    // Show application submission dialog
+    if (showApplicationDialog && job != null) {
+        ApplicationSubmissionDialog(
+            jobTitle = job!!.title,
+            jobBudget = job!!.budget,
+            onDismiss = { showApplicationDialog = false },
+            onSubmit = { proposedPrice, estimatedDuration, coverLetter, availability ->
+                applicationViewModel.submitApplication(
+                    jobId = jobId,
+                    jobTitle = job!!.title,
+                    jobBudget = job!!.budget,
+                    clientId = job!!.clientId,
+                    clientName = job!!.clientName,
+                    proposedPrice = proposedPrice,
+                    estimatedDuration = estimatedDuration,
+                    coverLetter = coverLetter,
+                    availability = availability
+                )
+            },
+            isLoading = submitApplicationState is SubmitApplicationState.Loading
+        )
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "Job Details",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = handleNavigateBack) {
+                        Icon(
+                            imageVector = AppIcons.Navigation.back,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        if (job == null) {
+            // Loading state
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Job details content
+            JobDetailContent(
+                job = job!!,
+                currentUserId = currentUserId,
+                isCraftsman = isCraftsman,
+                hasApplied = hasApplied,
+                applicationCount = applicationCount,
+                onApply = { showApplicationDialog = true },
+                onViewApplications = { onNavigateToApplications(jobId) },
+                isMapVisible = isMapVisible,
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            )
+        }
+    }
+}
+
+/**
+ * Content displaying all job details
+ */
+@Composable
+private fun JobDetailContent(
+    job: Job,
+    currentUserId: String?,
+    isCraftsman: Boolean,
+    hasApplied: Boolean,
+    applicationCount: Int,
+    onApply: () -> Unit,
+    onViewApplications: () -> Unit,
+    isMapVisible: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    
+    Column(
+        modifier = modifier.verticalScroll(scrollState)
+    ) {
+        // Job Image (always show, with fallback if needed)
+        JobImage(
+            imageUrl = job.imageUrl,
+            category = job.category,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+        )
+
+        // Map section
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(250.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+        ) {
+            if (isMapVisible) {
+                LocationMapSection(
+                    location = job.location,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+
+        // Job information
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Title and Category Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = job.title,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.work,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(IconSizes.medium),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = job.category,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // Status badge
+                    StatusBadge(status = job.status)
+                }
+            }
+
+            // Description Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.description,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(IconSizes.medium),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = "Description",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = job.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Budget and Details Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Job Details",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    
+                    // Budget
+                    job.budget?.let { budget ->
+                        DetailRow(
+                            icon = AppIcons.Content.payment,
+                            label = "Budget",
+                            value = "PEN ${String.format("%.0f", budget)}",
+                            valueColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    
+                    // Location
+                    DetailRow(
+                        icon = AppIcons.Content.location,
+                        label = "Location",
+                        value = job.location
+                    )
+                    
+                    // Deadline (if available)
+                    job.deadline?.let { deadline ->
+                        DetailRow(
+                            icon = AppIcons.Content.schedule,
+                            label = "Deadline",
+                            value = deadline
+                        )
+                    }
+                    
+                    // Posted date
+                    DetailRow(
+                        icon = AppIcons.Content.schedule,
+                        label = "Posted",
+                        value = formatDate(job.createdAt)
+                    )
+                }
+            }
+
+            // Client Information Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "Client Information",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    
+                    DetailRow(
+                        icon = AppIcons.Content.person,
+                        label = "Posted by",
+                        value = job.clientName
+                    )
+                    
+                    // Show craftsman info if assigned
+                    job.craftsmanName?.let { craftsmanName ->
+                        DetailRow(
+                            icon = AppIcons.Content.work,
+                            label = "Assigned to",
+                            value = craftsmanName
+                        )
+                    }
+                }
+            }
+
+            // Additional notes if available
+            job.notes?.let { notes ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Content.description,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(IconSizes.medium),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "Additional Notes",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(12.dp))
+                        
+                        Text(
+                            text = notes,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            // Action buttons based on user role and job status
+            if (isCraftsman && job.status == JobStatus.OPEN && job.clientId != currentUserId) {
+                // Craftsman viewing open job
+                if (hasApplied) {
+                    // Already applied - show status
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Content.schedule,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(end = 8.dp)
+                                    .size(IconSizes.medium),
+                                tint = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = "Application Submitted - Pending Review",
+                                style = MaterialTheme.typography.titleSmall.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                } else {
+                    // Can apply
+                    Button(
+                        onClick = onApply,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Actions.send,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(end = 8.dp)
+                                .size(IconSizes.medium)
+                        )
+                        Text(
+                            text = "Apply for this Job",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            } else if (!isCraftsman && job.clientId == currentUserId && applicationCount > 0) {
+                // Client viewing their job with applications
+                Button(
+                    onClick = onViewApplications,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary
+                    )
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Content.person,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .size(IconSizes.medium)
+                    )
+                    Text(
+                        text = "View Applications ($applicationCount)",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                }
+            }
+
+            // Spacing at bottom
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+/**
+ * Map section showing job location using Mapbox
+ * Only displays if Mapbox token is configured
+ */
+@Composable
+private fun LocationMapSection(
+    location: String,
+    modifier: Modifier = Modifier
+) {
+    // Check if Mapbox token is available
+    val hasMapboxToken = BuildConfig.MAPBOX_PUBLIC_TOKEN.isNotEmpty()
+    
+    if (hasMapboxToken) {
+        // Default location (Lima, Peru) - replace with geocoded coordinates from location string
+        // In production, you would geocode the location string to get actual coordinates
+        val defaultLocation = Point.fromLngLat(-77.0428, -12.0464) // Lima, Peru (lng, lat)
+        
+        // Capture colors in Composable context
+        val markerColor = MaterialTheme.colorScheme.primary
+        val strokeColor = MaterialTheme.colorScheme.onPrimary
+        
+        val mapViewportState = rememberMapViewportState {
+            setCameraOptions {
+                center(defaultLocation)
+                zoom(12.0)
+                pitch(0.0)
+            }
+        }
+
+        Box(
+            modifier = modifier
+        ) {
+            MapboxMap(
+                modifier = Modifier.fillMaxSize(),
+                mapViewportState = mapViewportState,
+                style = {
+                    MapStyle(style = "mapbox://styles/mapbox/streets-v12")
+                }
+            ) {
+                // Add a circle annotation to mark the job location
+                CircleAnnotation(
+                    point = defaultLocation
+                ) {
+                    circleRadius = 10.0
+                    circleColor = markerColor
+                    circleStrokeWidth = 2.0
+                    circleStrokeColor = strokeColor
+                }
+            }
+            
+            // Location label overlay
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(12.dp)
+                    .background(
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Content.location,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(IconSizes.small),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = location,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    } else {
+        // Fallback UI when Mapbox is not configured - show location as text only
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = AppIcons.Content.location,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(IconSizes.large),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Column {
+                Text(
+                    text = "Location",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
+                Text(
+                    text = location,
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Status badge component
+ */
+@Composable
+private fun StatusBadge(
+    status: JobStatus,
+    modifier: Modifier = Modifier
+) {
+    val statusColor = when (status) {
+        JobStatus.OPEN -> MaterialTheme.colorScheme.primary
+        JobStatus.PENDING -> MaterialTheme.colorScheme.tertiary
+        JobStatus.ACCEPTED -> MaterialTheme.colorScheme.secondary
+        JobStatus.IN_PROGRESS -> MaterialTheme.colorScheme.tertiary
+        JobStatus.COMPLETED -> MaterialTheme.colorScheme.secondary
+        JobStatus.CANCELLED -> MaterialTheme.colorScheme.error
+    }
+    
+    val statusText = when (status) {
+        JobStatus.OPEN -> "Open"
+        JobStatus.PENDING -> "Pending"
+        JobStatus.ACCEPTED -> "Accepted"
+        JobStatus.IN_PROGRESS -> "In Progress"
+        JobStatus.COMPLETED -> "Completed"
+        JobStatus.CANCELLED -> "Cancelled"
+    }
+
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(statusColor.copy(alpha = 0.15f))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = statusText,
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = statusColor
+        )
+    }
+}
+
+/**
+ * Detail row component
+ */
+@Composable
+private fun DetailRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(IconSizes.medium),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+        }
+        
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.SemiBold
+            ),
+            color = valueColor,
+            modifier = Modifier.padding(start = 32.dp)
+        )
+    }
+}
+
+/**
+ * Format timestamp to readable date string
+ */
+private fun formatDate(timestamp: Long): String {
+    val dateFormat = SimpleDateFormat("MMM d, yyyy 'at' h:mm a", Locale.getDefault())
+    return dateFormat.format(Date(timestamp))
+}
