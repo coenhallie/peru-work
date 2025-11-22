@@ -65,6 +65,7 @@ import com.example.workapp.ui.viewmodel.AuthState
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -81,6 +82,7 @@ fun WelcomeScreen(
     var showEmailAuth by remember { mutableStateOf(false) }
     var isSignUp by remember { mutableStateOf(false) }
     var visible by remember { mutableStateOf(false) }
+    var googleUser by remember { mutableStateOf<FirebaseUser?>(null) }
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -155,6 +157,11 @@ fun WelcomeScreen(
             is AuthState.Authenticated -> {
                 onAuthSuccess()
             }
+            is AuthState.NeedsProfileCompletion -> {
+                val user = (authState as AuthState.NeedsProfileCompletion).firebaseUser
+                googleUser = user
+                isSignUp = true
+            }
             is AuthState.Error -> {
                 snackbarHostState.showSnackbar((authState as AuthState.Error).message)
                 viewModel.clearError()
@@ -177,9 +184,14 @@ fun WelcomeScreen(
                 SignUpStepperScreen(
                     viewModel = viewModel,
                     isLoading = authState is AuthState.Loading,
+                    initialName = googleUser?.displayName ?: "",
+                    initialEmail = googleUser?.email ?: "",
+                    initialImageUri = googleUser?.photoUrl,
+                    isGoogleSignIn = googleUser != null,
                     onSwitchToSignIn = {
                         isSignUp = false
                         showEmailAuth = true
+                        googleUser = null
                     }
                 )
             }
