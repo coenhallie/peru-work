@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -6,6 +9,13 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.dagger.hilt.android")
     id("com.google.devtools.ksp") version "2.1.0-1.0.29"
+}
+
+// Load local.properties
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 android {
@@ -24,8 +34,12 @@ android {
             useSupportLibrary = true
         }
         
+        
         // Mapbox public token for runtime usage
-        buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"${project.findProperty("MAPBOX_PUBLIC_TOKEN") ?: ""}\"")
+        buildConfigField("String", "MAPBOX_PUBLIC_TOKEN", "\"${localProperties.getProperty("MAPBOX_PUBLIC_TOKEN") ?: project.findProperty("MAPBOX_PUBLIC_TOKEN") ?: ""}\"")
+        
+        // Cloudinary URL
+        buildConfigField("String", "CLOUDINARY_URL", "\"${localProperties.getProperty("CLOUDINARY_URL") ?: ""}\"")
     }
 
     buildTypes {
@@ -67,9 +81,14 @@ dependencies {
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-appcheck-debug")
     
+    // Cloudinary
+    implementation("com.cloudinary:cloudinary-android:3.1.2")
+    
     // Mapbox Maps for location display
-    implementation("com.mapbox.maps:android:11.12.0-beta.1")
-    implementation("com.mapbox.extension:maps-compose:11.12.0-beta.1")
+    implementation("com.mapbox.maps:android-ndk27:11.16.4")
+    implementation("com.mapbox.extension:maps-compose:11.16.4") {
+        exclude(group = "com.mapbox.maps", module = "android")
+    }
     
     // Retrofit for Mapbox Geocoding API (address autofill)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -83,8 +102,9 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     
     // Hilt for Dependency Injection
-    implementation("com.google.dagger:hilt-android:2.51.1")
-    ksp("com.google.dagger:hilt-android-compiler:2.51.1")
+    // Hilt for Dependency Injection
+    implementation("com.google.dagger:hilt-android:2.52")
+    ksp("com.google.dagger:hilt-android-compiler:2.52")
     implementation("androidx.hilt:hilt-navigation-compose:1.2.0")
     
     // Lifecycle & ViewModel

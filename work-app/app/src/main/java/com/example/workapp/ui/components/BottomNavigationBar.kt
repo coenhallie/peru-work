@@ -1,6 +1,8 @@
 package com.example.workapp.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.Box
@@ -88,7 +90,8 @@ fun BottomNavigationBar(
     onNavigateToDestination: (BottomNavDestination) -> Unit,
     modifier: Modifier = Modifier,
     visible: Boolean = true,
-    currentUser: User? = null
+    currentUser: User? = null,
+    unreadMessageCount: Int = 0
 ) {
     // Create destinations based on user role
     // IMPORTANT: Craftsmen should NOT see the Create button
@@ -140,14 +143,33 @@ fun BottomNavigationBar(
                         selected = selected,
                         onClick = { onNavigateToDestination(destination) },
                         icon = {
-                            Icon(
-                                imageVector = AppIcons.getNavigationIcon(
-                                    route = destination.route,
-                                    selected = selected
-                                ),
-                                contentDescription = destination.contentDescription,
-                                modifier = Modifier.size(IconSizes.medium)
-                            )
+                            if (destination is BottomNavDestination.Chat && unreadMessageCount > 0) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge {
+                                            Text(text = unreadMessageCount.toString())
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = AppIcons.getNavigationIcon(
+                                            route = destination.route,
+                                            selected = selected
+                                        ),
+                                        contentDescription = destination.contentDescription,
+                                        modifier = Modifier.size(IconSizes.medium)
+                                    )
+                                }
+                            } else {
+                                Icon(
+                                    imageVector = AppIcons.getNavigationIcon(
+                                        route = destination.route,
+                                        selected = selected
+                                    ),
+                                    contentDescription = destination.contentDescription,
+                                    modifier = Modifier.size(IconSizes.medium)
+                                )
+                            }
                         },
                         label = {
                             Text(

@@ -9,7 +9,6 @@ import android.net.Uri
 import com.example.workapp.data.repository.AuthRepository
 import com.example.workapp.data.repository.JobRepository
 import com.example.workapp.data.repository.LocationRepository
-import com.google.firebase.storage.FirebaseStorage
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job as CoroutineJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +27,6 @@ class JobViewModel @Inject constructor(
     private val jobRepository: JobRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
-    private val storage: FirebaseStorage,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -147,14 +145,13 @@ class JobViewModel @Inject constructor(
                 // Upload image if selected
                 var imageUrl: String? = null
                 if (imageUri != null) {
-                    try {
-                        val ref = storage.reference.child("job_images/${UUID.randomUUID()}")
-                        ref.putFile(Uri.parse(imageUri)).await()
-                        imageUrl = ref.downloadUrl.await().toString()
-                    } catch (e: Exception) {
-                        // If image upload fails, return error
-                        e.printStackTrace()
-                        _createJobState.value = CreateJobState.Error("Failed to upload image: ${e.message}")
+                    val uploadResult = jobRepository.uploadJobImage(Uri.parse(imageUri))
+                    if (uploadResult.isSuccess) {
+                        imageUrl = uploadResult.getOrNull()
+                    } else {
+                        _createJobState.value = CreateJobState.Error(
+                            uploadResult.exceptionOrNull()?.message ?: "Failed to upload image"
+                        )
                         return@launch
                     }
                 }

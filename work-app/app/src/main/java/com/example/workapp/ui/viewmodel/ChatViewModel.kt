@@ -32,16 +32,28 @@ class ChatViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private var chatRoomsJob: kotlinx.coroutines.Job? = null
+
     init {
-        loadChatRooms()
+        viewModelScope.launch {
+            authRepository.authState.collect { user ->
+                if (user != null) {
+                    loadChatRooms(user.uid)
+                } else {
+                    _chatRooms.value = emptyList()
+                    chatRoomsJob?.cancel()
+                }
+            }
+        }
     }
 
-    fun loadChatRooms() {
-        val currentUser = authRepository.currentUser ?: return
+    fun loadChatRooms(userId: String? = null) {
+        val uid = userId ?: authRepository.currentUser?.uid ?: return
         
-        viewModelScope.launch {
+        chatRoomsJob?.cancel()
+        chatRoomsJob = viewModelScope.launch {
             _isLoading.value = true
-            chatRepository.getChatRoomsForUser(currentUser.uid)
+            chatRepository.getChatRoomsForUser(uid)
                 .catch { e ->
                     _error.value = e.message
                     _isLoading.value = false

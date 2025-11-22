@@ -21,6 +21,7 @@ import com.example.workapp.ui.components.BottomNavigationBar
 import com.example.workapp.ui.components.shouldShowBottomBar
 import com.example.workapp.ui.theme.WorkAppTheme
 import com.example.workapp.ui.viewmodel.AuthViewModel
+import com.example.workapp.ui.viewmodel.ChatViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -50,12 +51,22 @@ class MainActivity : ComponentActivity() {
  */
 @Composable
 fun WorkAppNavHost(
-    authViewModel: AuthViewModel = hiltViewModel()
+    authViewModel: AuthViewModel = hiltViewModel(),
+    chatViewModel: ChatViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val currentUser by authViewModel.currentUser.collectAsState()
+    val chatRooms by chatViewModel.chatRooms.collectAsState()
+    
+    val totalUnreadCount = androidx.compose.runtime.remember(chatRooms, currentUser) {
+        if (currentUser == null) 0
+        else chatRooms.sumOf { room ->
+            if (currentUser!!.id == room.clientId) room.unreadCountClient
+            else room.unreadCountCraftsman
+        }
+    }
     
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -80,7 +91,8 @@ fun WorkAppNavHost(
                             restoreState = true
                         }
                     },
-                    currentUser = currentUser
+                    currentUser = currentUser,
+                    unreadMessageCount = totalUnreadCount
                 )
             }
         },

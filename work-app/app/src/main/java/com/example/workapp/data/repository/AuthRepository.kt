@@ -8,10 +8,15 @@ import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.resume
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -57,7 +62,8 @@ class AuthRepository @Inject constructor(
         location: String,
         role: UserRole,
         craft: String? = null,
-        bio: String? = null
+        bio: String? = null,
+        workDistance: Int? = null
     ): Result<User> = try {
         // Create auth account
         val authResult = auth.createUserWithEmailAndPassword(email, password).await()
@@ -73,6 +79,7 @@ class AuthRepository @Inject constructor(
             roleString = role.name,
             craft = craft,
             bio = bio,
+            workDistance = workDistance,
             experience = if (role == UserRole.CRAFTSMAN) 0 else null,
             rating = if (role == UserRole.CRAFTSMAN) 0.0 else null,
             reviewCount = if (role == UserRole.CRAFTSMAN) 0 else null,
@@ -115,7 +122,19 @@ class AuthRepository @Inject constructor(
      * Sign in with Google using Credential Manager API
      * @param idToken The Google ID token obtained from Credential Manager
      */
-    suspend fun signInWithGoogle(idToken: String): Result<User> = try {
+    /**
+     * Result of Google Sign In
+     */
+    sealed class GoogleSignInResult {
+        data class Success(val user: User) : GoogleSignInResult()
+        data class NewUser(val firebaseUser: FirebaseUser) : GoogleSignInResult()
+    }
+
+    /**
+     * Sign in with Google using Credential Manager API
+     * @param idToken The Google ID token obtained from Credential Manager
+     */
+    suspend fun signInWithGoogle(idToken: String): Result<GoogleSignInResult> = try {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         val authResult = auth.signInWithCredential(credential).await()
         val firebaseUser = authResult.user ?: throw Exception("Google sign in failed")
@@ -129,26 +148,50 @@ class AuthRepository @Inject constructor(
         if (userDoc.exists()) {
             // Existing user - return their profile
             val user = userDoc.toObject(User::class.java) ?: throw Exception("User profile not found")
-            Result.success(user)
+            Result.success(GoogleSignInResult.Success(user))
         } else {
-            // New user - create profile with default client role
-            val user = User(
-                id = firebaseUser.uid,
-                email = firebaseUser.email ?: "",
-                name = firebaseUser.displayName ?: "",
-                phone = "",
-                location = "",
-                roleString = UserRole.CLIENT.name,
-                profileImageUrl = firebaseUser.photoUrl?.toString()
-            )
-
-            firestore.collection("users")
-                .document(firebaseUser.uid)
-                .set(user)
-                .await()
-
-            Result.success(user)
+            // New user - return NewUser result to trigger registration flow
+            Result.success(GoogleSignInResult.NewUser(firebaseUser))
         }
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /**
+     * Complete user profile for a user who is already authenticated (e.g. via Google)
+     */
+    suspend fun completeProfile(
+        user: User,
+        imageUri: Uri? = null
+    ): Result<User> = try {
+        val firebaseUser = currentUser ?: throw Exception("No user signed in")
+        
+        // Verify the user ID matches
+        if (user.id != firebaseUser.uid) {
+            throw Exception("User ID mismatch")
+        }
+
+        // Upload image if provided
+        val userWithImage = if (imageUri != null) {
+            val imageUrlResult = uploadProfileImage(imageUri)
+            if (imageUrlResult.isFailure) {
+                // If upload fails, we continue without image but maybe log it
+                // or we could throw. For now let's continue.
+                user
+            } else {
+                user.copy(profileImageUrl = imageUrlResult.getOrNull())
+            }
+        } else {
+            user
+        }
+
+        // Save to Firestore
+        firestore.collection("users")
+            .document(firebaseUser.uid)
+            .set(userWithImage)
+            .await()
+
+        Result.success(userWithImage)
     } catch (e: Exception) {
         Result.failure(e)
     }
@@ -209,23 +252,39 @@ class AuthRepository @Inject constructor(
      * @param imageUri The URI of the image to upload
      * @return The download URL of the uploaded image
      */
-    suspend fun uploadProfileImage(imageUri: Uri): Result<String> = try {
-        val firebaseUser = currentUser ?: throw Exception("No user signed in")
-        
-        // Create a reference to the profile image location
-        val storageRef = storage.reference
-            .child("profile_images")
-            .child("${firebaseUser.uid}.jpg")
-        
-        // Upload the file
-        storageRef.putFile(imageUri).await()
-        
-        // Get the download URL
-        val downloadUrl = storageRef.downloadUrl.await()
-        
-        Result.success(downloadUrl.toString())
-    } catch (e: Exception) {
-        Result.failure(e)
+    suspend fun uploadProfileImage(imageUri: Uri): Result<String> = suspendCancellableCoroutine { continuation ->
+        try {
+            MediaManager.get().upload(imageUri)
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {
+                        // Optional: Handle start
+                    }
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                        // Optional: Handle progress
+                    }
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                        val url = resultData["secure_url"] as? String ?: resultData["url"] as? String
+                        if (url != null) {
+                            continuation.resume(Result.success(url))
+                        } else {
+                            continuation.resume(Result.failure(Exception("No URL in response")))
+                        }
+                    }
+
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        continuation.resume(Result.failure(Exception(error.description)))
+                    }
+
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {
+                        continuation.resume(Result.failure(Exception("Upload rescheduled: ${error.description}")))
+                    }
+                })
+                .dispatch()
+        } catch (e: Exception) {
+            continuation.resume(Result.failure(e))
+        }
     }
 
     /**
@@ -242,7 +301,14 @@ class AuthRepository @Inject constructor(
             if (imageUrlResult.isFailure) {
                 throw imageUrlResult.exceptionOrNull() ?: Exception("Failed to upload image")
             }
-            user.copy(profileImageUrl = imageUrlResult.getOrNull())
+            val newImageUrl = imageUrlResult.getOrNull()
+            
+            // Delete old image if it exists and is different
+            if (!user.profileImageUrl.isNullOrEmpty() && user.profileImageUrl != newImageUrl) {
+                deleteImage(user.profileImageUrl)
+            }
+            
+            user.copy(profileImageUrl = newImageUrl)
         } else {
             user
         }
@@ -256,6 +322,63 @@ class AuthRepository @Inject constructor(
         Result.success(updatedUser)
     } catch (e: Exception) {
         Result.failure(e)
+    }
+
+    /**
+     * Delete image from Cloudinary
+     */
+    /**
+     * Delete image from Cloudinary
+     */
+    private suspend fun deleteImage(imageUrl: String) = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val publicId = extractPublicIdFromUrl(imageUrl)
+            if (publicId != null) {
+                // Use a dedicated Cloudinary instance with the full URL (including secret) for deletion
+                // MediaManager might not expose the secret-containing instance for admin operations
+                val cloudinary = com.cloudinary.Cloudinary(com.example.workapp.BuildConfig.CLOUDINARY_URL)
+                
+                // Use ObjectUtils.asMap for parameters
+                val params = com.cloudinary.utils.ObjectUtils.asMap("invalidate", true)
+                
+                cloudinary.uploader().destroy(publicId, params)
+                android.util.Log.d("AuthRepository", "Deleted old image: $publicId")
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            android.util.Log.e("AuthRepository", "Failed to delete old image: ${e.message}")
+            // We don't want to fail the whole operation if deletion fails
+        }
+    }
+
+    private fun extractPublicIdFromUrl(url: String): String? {
+        return try {
+            val uri = Uri.parse(url)
+            val path = uri.path ?: return null
+            // Cloudinary URLs are typically /<cloud_name>/image/upload/v<version>/<public_id>.<extension>
+            // or /<cloud_name>/image/upload/<public_id>.<extension>
+            val lastSegment = uri.lastPathSegment ?: return null
+            val fileName = lastSegment.substringBeforeLast(".")
+            
+            // If the public ID contains folders, we might need more complex logic.
+            // For now, assuming simple public IDs or that we can extract from the path.
+            // A more robust way is to look for "upload/" and take everything after the version.
+            
+            val uploadIndex = path.indexOf("upload/")
+            if (uploadIndex != -1) {
+                var publicIdWithVersion = path.substring(uploadIndex + 7)
+                // Remove version if present (starts with v and followed by numbers)
+                val parts = publicIdWithVersion.split("/")
+                if (parts.isNotEmpty() && parts[0].startsWith("v") && parts[0].drop(1).all { it.isDigit() }) {
+                    publicIdWithVersion = publicIdWithVersion.substringAfter("/")
+                }
+                return publicIdWithVersion.substringBeforeLast(".")
+            }
+            
+            fileName
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**
@@ -292,6 +415,9 @@ class AuthRepository @Inject constructor(
         }
 
         // Delete profile image from Storage if it exists
+        // Note: Cloudinary image deletion is not handled here as it requires Admin API or signed signature
+        // which is better handled via backend or Cloudinary dashboard/rules.
+        /*
         try {
             val imageRef = storage.reference
                 .child("profile_images")
@@ -300,6 +426,7 @@ class AuthRepository @Inject constructor(
         } catch (e: Exception) {
             // Image might not exist, ignore error
         }
+        */
 
         // Delete user document from Firestore
         firestore.collection("users")

@@ -31,7 +31,8 @@ data class User(
     val completedProjects: Int? = null,
     val specialties: List<String>? = null,
     val hourlyRate: Double? = null,
-    val availability: String? = null
+    val availability: String? = null,
+    val workDistance: Int? = null
 ) {
     // Computed property for type-safe role access
     @get:Exclude

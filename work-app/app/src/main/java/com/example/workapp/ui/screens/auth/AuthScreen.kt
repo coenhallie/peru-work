@@ -5,6 +5,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -61,6 +62,7 @@ import com.example.workapp.ui.viewmodel.AuthState
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 
 /**
@@ -76,6 +78,7 @@ fun AuthScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showEmailAuth by remember { mutableStateOf(false) }
     var isSignUp by remember { mutableStateOf(false) }
+    var googleUser by remember { mutableStateOf<FirebaseUser?>(null) }
     
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -142,15 +145,26 @@ fun AuthScreen(
 
     // Handle auth success
     LaunchedEffect(authState) {
+        Log.d("AuthScreen", "AuthState changed: $authState")
         when (authState) {
             is AuthState.Authenticated -> {
+                Log.d("AuthScreen", "Authenticated, calling onAuthSuccess")
                 onAuthSuccess()
             }
+            is AuthState.NeedsProfileCompletion -> {
+                Log.d("AuthScreen", "NeedsProfileCompletion, setting isSignUp = true")
+                val user = (authState as AuthState.NeedsProfileCompletion).firebaseUser
+                googleUser = user
+                isSignUp = true
+            }
             is AuthState.Error -> {
+                Log.e("AuthScreen", "Auth Error: ${(authState as AuthState.Error).message}")
                 snackbarHostState.showSnackbar((authState as AuthState.Error).message)
                 viewModel.clearError()
             }
-            else -> {}
+            else -> {
+                Log.d("AuthScreen", "AuthState: $authState")
+            }
         }
     }
 
@@ -158,115 +172,126 @@ fun AuthScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            // Header
-            Text(
-                text = if (isSignUp) "Create Account" else "Welcome Back",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
-            
-            Text(
-                text = if (isSignUp) "Sign up to get started" else "Sign in to continue",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Google Sign-In Button (Primary) - Using Material 3 FilledTonalButton
-            FilledTonalButton(
-                onClick = handleGoogleSignIn,
+        if (isSignUp) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                enabled = authState !is AuthState.Loading
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp)
             ) {
-                // Google "G" logo - prominent size following Material 3 guidelines
-                Surface(
-                    modifier = Modifier.size(24.dp),
-                    color = Color.White,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "G",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(12.dp))
-                Text(
-                    text = "Continue with Google",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                SignUpStepperScreen(
+                    viewModel = viewModel,
+                    isLoading = authState is AuthState.Loading,
+                    onSwitchToSignIn = { 
+                        isSignUp = false
+                        googleUser = null
+                        showEmailAuth = true
+                    },
+                    initialName = googleUser?.displayName ?: "",
+                    initialEmail = googleUser?.email ?: "",
+                    initialImageUri = googleUser?.photoUrl,
+                    isGoogleSignIn = googleUser != null
                 )
             }
-
-            // Divider with "or"
-            Row(
+        } else {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                HorizontalDivider(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Header
                 Text(
-                    text = "or continue with email",
-                    style = MaterialTheme.typography.bodySmall,
+                    text = "Welcome Back",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                Text(
+                    text = "Sign in to continue",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.fillMaxWidth()
                 )
-                HorizontalDivider(modifier = Modifier.weight(1f))
-            }
 
-            // Email/Password Form
-            if (!showEmailAuth && !isSignUp) {
-                // Show button to reveal email form
-                OutlinedButton(
-                    onClick = { showEmailAuth = true },
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Google Sign-In Button (Primary) - Using Material 3 FilledTonalButton
+                FilledTonalButton(
+                    onClick = handleGoogleSignIn,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(56.dp),
+                    enabled = authState !is AuthState.Loading
                 ) {
-                    Icon(
-                        imageVector = AppIcons.Form.email,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSizes.medium)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sign in with Email")
-                }
-            } else {
-                // Email/Password input form
-                if (isSignUp) {
-                    SignUpForm(
-                        viewModel = viewModel,
-                        isLoading = authState is AuthState.Loading,
-                        onSwitchToSignIn = { 
-                            isSignUp = false
-                            showEmailAuth = true
+                    // Google "G" logo - prominent size following Material 3 guidelines
+                    Surface(
+                        modifier = Modifier.size(24.dp),
+                        color = Color.White,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "G",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            )
                         }
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        text = "Continue with Google",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium
                     )
+                }
+
+                // Divider with "or"
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "or continue with email",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                // Email/Password Form
+                if (!showEmailAuth) {
+                    // Show button to reveal email form
+                    OutlinedButton(
+                        onClick = { showEmailAuth = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp)
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Form.email,
+                            contentDescription = null,
+                            modifier = Modifier.size(IconSizes.medium)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign in with Email")
+                    }
                 } else {
                     SignInForm(
                         viewModel = viewModel,
@@ -274,31 +299,30 @@ fun AuthScreen(
                         onSwitchToSignUp = { isSignUp = true }
                     )
                 }
-            }
-            
-            // Switch between sign in/sign up
-            if (showEmailAuth || isSignUp) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = if (isSignUp) "Already have an account?" else "Don't have an account?",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    androidx.compose.material3.TextButton(
-                        onClick = { 
-                            isSignUp = !isSignUp
-                            if (!isSignUp) showEmailAuth = true
-                        }
+                
+                // Switch between sign in/sign up
+                if (showEmailAuth) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = if (isSignUp) "Sign In" else "Sign Up",
-                            fontWeight = FontWeight.SemiBold
+                            text = "Don't have an account?",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        androidx.compose.material3.TextButton(
+                            onClick = { 
+                                isSignUp = true
+                            }
+                        ) {
+                            Text(
+                                text = "Sign Up",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
                     }
                 }
             }
@@ -378,198 +402,6 @@ private fun SignInForm(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text("Sign In")
-        }
-    }
-}
-
-@Composable
-private fun SignUpForm(
-    viewModel: AuthViewModel,
-    isLoading: Boolean,
-    onSwitchToSignIn: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var selectedRole by remember { mutableStateOf(UserRole.CLIENT) }
-    var craft by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Role selection
-        Text(
-            text = "I am a:",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = selectedRole == UserRole.CLIENT,
-                onClick = { selectedRole = UserRole.CLIENT },
-                label = { Text("Client") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = selectedRole == UserRole.CRAFTSMAN,
-                onClick = { selectedRole = UserRole.CRAFTSMAN },
-                label = { Text("Craftsman") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Full Name") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.person,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.email,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = { Text("Phone") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.phone,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        AddressAutofillTextField(
-            value = location,
-            onValueChange = { location = it },
-            label = "Location",
-            placeholder = "Start typing your address...",
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Craftsman-specific fields
-        AnimatedVisibility(visible = selectedRole == UserRole.CRAFTSMAN) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = craft,
-                    onValueChange = { craft = it },
-                    label = { Text("Craft/Service") },
-                    placeholder = { Text("e.g., Plumber, Electrician, Carpenter") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = AppIcons.Form.work,
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSizes.medium)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    label = { Text("Bio") },
-                    placeholder = { Text("Brief description of your services") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
-            }
-        }
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.lock,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) AppIcons.Form.visibility else AppIcons.Form.visibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        modifier = Modifier.size(IconSizes.medium)
-                    )
-                }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Button(
-            onClick = {
-                viewModel.signUp(
-                    email = email.trim(),
-                    password = password,
-                    name = name.trim(),
-                    phone = phone.trim(),
-                    location = location.trim(),
-                    role = selectedRole,
-                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            enabled = !isLoading &&
-                    name.isNotBlank() &&
-                    email.isNotBlank() &&
-                    phone.isNotBlank() &&
-                    location.isNotBlank() &&
-                    password.isNotBlank() &&
-                    (selectedRole == UserRole.CLIENT || craft.isNotBlank())
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Text("Create Account")
         }
     }
 }

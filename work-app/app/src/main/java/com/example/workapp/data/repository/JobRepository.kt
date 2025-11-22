@@ -4,10 +4,16 @@ import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobStatus
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
+import com.cloudinary.android.MediaManager
+import com.cloudinary.android.callback.ErrorInfo
+import com.cloudinary.android.callback.UploadCallback
+import android.net.Uri
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.tasks.await
+import kotlin.coroutines.resume
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +54,47 @@ class JobRepository @Inject constructor(
         Result.success(docRef.id)
     } catch (e: Exception) {
         Result.failure(e)
+    }
+
+    /**
+     * Upload job image to Cloudinary
+     * @param imageUri The URI of the image to upload
+     * @return The download URL of the uploaded image
+     */
+    suspend fun uploadJobImage(imageUri: Uri): Result<String> = suspendCancellableCoroutine { continuation ->
+        try {
+            MediaManager.get().upload(imageUri)
+                .option("folder", "job_images")
+                .callback(object : UploadCallback {
+                    override fun onStart(requestId: String) {
+                        // Optional: Handle start
+                    }
+
+                    override fun onProgress(requestId: String, bytes: Long, totalBytes: Long) {
+                        // Optional: Handle progress
+                    }
+
+                    override fun onSuccess(requestId: String, resultData: Map<*, *>) {
+                        val url = resultData["secure_url"] as? String ?: resultData["url"] as? String
+                        if (url != null) {
+                            continuation.resume(Result.success(url))
+                        } else {
+                            continuation.resume(Result.failure(Exception("No URL in response")))
+                        }
+                    }
+
+                    override fun onError(requestId: String, error: ErrorInfo) {
+                        continuation.resume(Result.failure(Exception(error.description)))
+                    }
+
+                    override fun onReschedule(requestId: String, error: ErrorInfo) {
+                        continuation.resume(Result.failure(Exception("Upload rescheduled: ${error.description}")))
+                    }
+                })
+                .dispatch()
+        } catch (e: Exception) {
+            continuation.resume(Result.failure(e))
+        }
     }
 
     /**

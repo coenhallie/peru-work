@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.workapp.data.model.User
 import com.example.workapp.data.model.UserRole
 import com.example.workapp.data.repository.AuthRepository
+import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,7 +68,9 @@ class AuthViewModel @Inject constructor(
         location: String,
         role: UserRole,
         craft: String? = null,
-        bio: String? = null
+        bio: String? = null,
+        workDistance: Int? = null,
+        imageUri: Uri? = null
     ) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -80,11 +83,30 @@ class AuthViewModel @Inject constructor(
                 location = location,
                 role = role,
                 craft = craft,
-                bio = bio
+                bio = bio,
+                workDistance = workDistance
             ).onSuccess { user ->
-                _currentUser.value = user
-                _cachedUserRole.value = user.userRole
-                _authState.value = AuthState.Authenticated(user)
+                if (imageUri != null) {
+                    // Upload image and update profile
+                    authRepository.updateProfileWithImage(user, imageUri)
+                        .onSuccess { updatedUser ->
+                            _currentUser.value = updatedUser
+                            _cachedUserRole.value = updatedUser.userRole
+                            _authState.value = AuthState.Authenticated(updatedUser)
+                        }
+                        .onFailure { error ->
+                            // Signup succeeded but image upload failed
+                            // We still consider user authenticated but maybe show a warning?
+                            // For now, just set authenticated with original user
+                            _currentUser.value = user
+                            _cachedUserRole.value = user.userRole
+                            _authState.value = AuthState.Authenticated(user)
+                        }
+                } else {
+                    _currentUser.value = user
+                    _cachedUserRole.value = user.userRole
+                    _authState.value = AuthState.Authenticated(user)
+                }
             }.onFailure { error ->
                 _authState.value = AuthState.Error(error.message ?: "Sign up failed")
             }
@@ -110,15 +132,76 @@ class AuthViewModel @Inject constructor(
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
+            android.util.Log.d("AuthViewModel", "Starting Google Sign In...")
             
             authRepository.signInWithGoogle(idToken)
-                .onSuccess { user ->
-                    _currentUser.value = user
-                    _cachedUserRole.value = user.userRole
-                    _authState.value = AuthState.Authenticated(user)
+                .onSuccess { result ->
+                    android.util.Log.d("AuthViewModel", "Google Sign In success: $result")
+                    when (result) {
+                        is AuthRepository.GoogleSignInResult.Success -> {
+                            android.util.Log.d("AuthViewModel", "Existing user found")
+                            _currentUser.value = result.user
+                            _cachedUserRole.value = result.user.userRole
+                            _authState.value = AuthState.Authenticated(result.user)
+                        }
+                        is AuthRepository.GoogleSignInResult.NewUser -> {
+                            android.util.Log.d("AuthViewModel", "New user, needs profile completion")
+                            _authState.value = AuthState.NeedsProfileCompletion(result.firebaseUser)
+                        }
+                    }
                 }
                 .onFailure { error ->
+                    android.util.Log.e("AuthViewModel", "Google Sign In failed", error)
                     _authState.value = AuthState.Error(error.message ?: "Google sign in failed")
+                }
+        }
+    }
+
+    fun completeProfile(
+        email: String,
+        name: String,
+        phone: String,
+        location: String,
+        role: UserRole,
+        craft: String? = null,
+        bio: String? = null,
+        workDistance: Int? = null,
+        imageUri: Uri? = null
+    ) {
+        viewModelScope.launch {
+            _authState.value = AuthState.Loading
+            
+            val firebaseUser = authRepository.currentUser
+            if (firebaseUser == null) {
+                _authState.value = AuthState.Error("No user signed in")
+                return@launch
+            }
+
+            val user = User(
+                id = firebaseUser.uid,
+                email = email,
+                name = name,
+                phone = phone,
+                location = location,
+                roleString = role.name,
+                craft = craft,
+                bio = bio,
+                workDistance = workDistance,
+                experience = if (role == UserRole.CRAFTSMAN) 0 else null,
+                rating = if (role == UserRole.CRAFTSMAN) 0.0 else null,
+                reviewCount = if (role == UserRole.CRAFTSMAN) 0 else null,
+                completedProjects = if (role == UserRole.CRAFTSMAN) 0 else null,
+                profileImageUrl = firebaseUser.photoUrl?.toString() // Default to Google photo
+            )
+
+            authRepository.completeProfile(user, imageUri)
+                .onSuccess { updatedUser ->
+                    _currentUser.value = updatedUser
+                    _cachedUserRole.value = updatedUser.userRole
+                    _authState.value = AuthState.Authenticated(updatedUser)
+                }
+                .onFailure { error ->
+                    _authState.value = AuthState.Error(error.message ?: "Failed to complete profile")
                 }
         }
     }
@@ -157,7 +240,7 @@ class AuthViewModel @Inject constructor(
     /**
      * Update user profile with optional image upload
      */
-    fun updateProfile(
+    suspend fun updateProfile(
         name: String,
         phone: String,
         location: String,
@@ -165,37 +248,37 @@ class AuthViewModel @Inject constructor(
         bio: String? = null,
         hourlyRate: Double? = null,
         availability: String? = null,
+        workDistance: Int? = null,
         imageUri: Uri? = null
     ) {
-        viewModelScope.launch {
-            try {
-                val currentUser = _currentUser.value ?: throw Exception("No user signed in")
-                
-                // Create updated user object
-                val updatedUser = currentUser.copy(
-                    name = name,
-                    phone = phone,
-                    location = location,
-                    craft = craft,
-                    bio = bio,
-                    hourlyRate = hourlyRate,
-                    availability = availability
-                )
-                
-                // Update profile with optional image
-                authRepository.updateProfileWithImage(updatedUser, imageUri)
-                    .onSuccess { user ->
-                        _currentUser.value = user
-                        _cachedUserRole.value = user.userRole
-                        _authState.value = AuthState.Authenticated(user)
-                    }
-                    .onFailure { error ->
-                        throw error
-                    }
-            } catch (e: Exception) {
-                // Error is handled by the caller
-                throw e
-            }
+        try {
+            val currentUser = _currentUser.value ?: throw Exception("No user signed in")
+            
+            // Create updated user object
+            val updatedUser = currentUser.copy(
+                name = name,
+                phone = phone,
+                location = location,
+                craft = craft,
+                bio = bio,
+                hourlyRate = hourlyRate,
+                availability = availability,
+                workDistance = workDistance
+            )
+            
+            // Update profile with optional image
+            authRepository.updateProfileWithImage(updatedUser, imageUri)
+                .onSuccess { user ->
+                    _currentUser.value = user
+                    _cachedUserRole.value = user.userRole
+                    _authState.value = AuthState.Authenticated(user)
+                }
+                .onFailure { error ->
+                    throw error
+                }
+        } catch (e: Exception) {
+            // Error is handled by the caller
+            throw e
         }
     }
 
@@ -246,4 +329,5 @@ sealed class AuthState {
     data class Authenticated(val user: User) : AuthState()
     data class Error(val message: String) : AuthState()
     data object PasswordResetSent : AuthState()
+    data class NeedsProfileCompletion(val firebaseUser: FirebaseUser) : AuthState()
 }

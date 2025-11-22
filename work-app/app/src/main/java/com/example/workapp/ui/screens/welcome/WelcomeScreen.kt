@@ -8,6 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -57,6 +58,7 @@ import androidx.credentials.exceptions.GetCredentialException
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.workapp.data.model.UserRole
 import com.example.workapp.ui.components.AddressAutofillTextField
+import com.example.workapp.ui.screens.auth.SignUpStepperScreen
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AuthState
@@ -165,190 +167,194 @@ fun WelcomeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp)
-                .verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            // Welcome section with icon
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800)) +
-                        slideInVertically(
-                            initialOffsetY = { -50 },
-                            animationSpec = androidx.compose.animation.core.tween(800)
-                        )
+        if (isSignUp) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp)
             ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Surface(
-                        shape = MaterialTheme.shapes.extraLarge,
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        tonalElevation = 4.dp
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Content.build,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(80.dp)
-                                .padding(16.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+                SignUpStepperScreen(
+                    viewModel = viewModel,
+                    isLoading = authState is AuthState.Loading,
+                    onSwitchToSignIn = {
+                        isSignUp = false
+                        showEmailAuth = true
                     }
-                    
-                    Text(
-                        text = "WorkApp",
-                        style = MaterialTheme.typography.headlineLarge.copy(
-                            fontWeight = FontWeight.ExtraBold
-                        ),
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    
-                    Text(
-                        text = "Connect instantly with trusted, high‑rated craftsmen for any task.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                }
+                )
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Google Sign-In Button (Primary)d
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 300))
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(24.dp)
+                    .verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                OutlinedButton(
-                    onClick = handleGoogleSignIn,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    enabled = authState !is AuthState.Loading,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                // Welcome section with icon
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800)) +
+                            slideInVertically(
+                                initialOffsetY = { -50 },
+                                animationSpec = androidx.compose.animation.core.tween(800)
+                            )
                 ) {
-                    Surface(
-                        modifier = Modifier.size(24.dp),
-                        color = Color.Transparent,
-                        shape = MaterialTheme.shapes.small
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("G", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "Continue with Google",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
-            }
-
-            // Divider with "or"
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 400))
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    HorizontalDivider(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "or continue with email",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    HorizontalDivider(modifier = Modifier.weight(1f))
-                }
-            }
-
-            // Email/Password Form
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 500))
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    if (!showEmailAuth && !isSignUp) {
-                        // Show button to reveal email form
-                        OutlinedButton(
-                            onClick = { showEmailAuth = true },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp)
+                        Surface(
+                            shape = MaterialTheme.shapes.extraLarge,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            tonalElevation = 4.dp
                         ) {
                             Icon(
-                                imageVector = AppIcons.Form.email,
+                                imageVector = AppIcons.Content.build,
                                 contentDescription = null,
-                                modifier = Modifier.size(IconSizes.medium)
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .padding(16.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
                             )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sign in with Email")
                         }
-                    } else {
-                        // Email/Password input form
-                        if (isSignUp) {
-                            SignUpForm(
-                                viewModel = viewModel,
-                                isLoading = authState is AuthState.Loading,
-                                onSwitchToSignIn = {
-                                    isSignUp = false
-                                    showEmailAuth = true
-                                }
-                            )
+                        
+                        Text(
+                            text = "WorkApp",
+                            style = MaterialTheme.typography.headlineLarge.copy(
+                                fontWeight = FontWeight.ExtraBold
+                            ),
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        
+                        Text(
+                            text = "Connect instantly with trusted, high‑rated craftsmen for any task.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Google Sign-In Button (Primary)d
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 300))
+                ) {
+                    OutlinedButton(
+                        onClick = handleGoogleSignIn,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        enabled = authState !is AuthState.Loading,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.Transparent,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text("G", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "Continue with Google",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+
+                // Divider with "or"
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 400))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "or continue with email",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+                }
+
+                // Email/Password Form
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(animationSpec = androidx.compose.animation.core.tween(800, delayMillis = 500))
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        if (!showEmailAuth) {
+                            // Show button to reveal email form
+                            OutlinedButton(
+                                onClick = { showEmailAuth = true },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp)
+                            ) {
+                                Icon(
+                                    imageVector = AppIcons.Form.email,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(IconSizes.medium)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Sign in with Email")
+                            }
                         } else {
+                            // Email/Password input form
                             SignInForm(
                                 viewModel = viewModel,
                                 isLoading = authState is AuthState.Loading,
                                 onSwitchToSignUp = { isSignUp = true }
                             )
                         }
-                    }
-                    
-                    // Switch between sign in/sign up - ALWAYS visible for better UX
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = if (isSignUp) "Already have an account?" else "Don't have an account?",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        androidx.compose.material3.TextButton(
-                            onClick = {
-                                isSignUp = !isSignUp
-                                // When switching to sign-up, show the form
-                                // When switching to sign-in from sign-up, show the form
-                                showEmailAuth = true
-                            }
+                        
+                        // Switch between sign in/sign up - ALWAYS visible for better UX
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = if (isSignUp) "Sign In" else "Sign Up",
-                                fontWeight = FontWeight.SemiBold
+                                text = "Don't have an account?",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            androidx.compose.material3.TextButton(
+                                onClick = {
+                                    isSignUp = true
+                                }
+                            ) {
+                                Text(
+                                    text = "Sign Up",
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(16.dp))
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -425,198 +431,6 @@ private fun SignInForm(
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text("Sign In")
-        }
-    }
-}
-
-@Composable
-private fun SignUpForm(
-    viewModel: AuthViewModel,
-    isLoading: Boolean,
-    onSwitchToSignIn: () -> Unit
-) {
-    var name by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var passwordVisible by remember { mutableStateOf(false) }
-    var selectedRole by remember { mutableStateOf(UserRole.CLIENT) }
-    var craft by remember { mutableStateOf("") }
-    var bio by remember { mutableStateOf("") }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Role selection
-        Text(
-            text = "I am a:",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            FilterChip(
-                selected = selectedRole == UserRole.CLIENT,
-                onClick = { selectedRole = UserRole.CLIENT },
-                label = { Text("Client") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = selectedRole == UserRole.CRAFTSMAN,
-                onClick = { selectedRole = UserRole.CRAFTSMAN },
-                label = { Text("Craftsman") },
-                modifier = Modifier.weight(1f)
-            )
-        }
-
-        OutlinedTextField(
-            value = name,
-            onValueChange = { name = it },
-            label = { Text("Full Name") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.person,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = { email = it },
-            label = { Text("Email") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.email,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        OutlinedTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = { Text("Phone") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.phone,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        AddressAutofillTextField(
-            value = location,
-            onValueChange = { location = it },
-            label = "Location",
-            placeholder = "Start typing your address...",
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Craftsman-specific fields
-        AnimatedVisibility(visible = selectedRole == UserRole.CRAFTSMAN) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedTextField(
-                    value = craft,
-                    onValueChange = { craft = it },
-                    label = { Text("Craft/Service") },
-                    placeholder = { Text("e.g., Plumber, Electrician, Carpenter") },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = AppIcons.Form.work,
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSizes.medium)
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                
-                OutlinedTextField(
-                    value = bio,
-                    onValueChange = { bio = it },
-                    label = { Text("Bio") },
-                    placeholder = { Text("Brief description of your services") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2,
-                    maxLines = 4
-                )
-            }
-        }
-
-        OutlinedTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = { Text("Password") },
-            leadingIcon = {
-                Icon(
-                    imageVector = AppIcons.Form.lock,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconSizes.medium)
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                    Icon(
-                        imageVector = if (passwordVisible) AppIcons.Form.visibility else AppIcons.Form.visibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        modifier = Modifier.size(IconSizes.medium)
-                    )
-                }
-            },
-            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-
-        Button(
-            onClick = {
-                viewModel.signUp(
-                    email = email.trim(),
-                    password = password,
-                    name = name.trim(),
-                    phone = phone.trim(),
-                    location = location.trim(),
-                    role = selectedRole,
-                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null
-                )
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            enabled = !isLoading &&
-                    name.isNotBlank() &&
-                    email.isNotBlank() &&
-                    phone.isNotBlank() &&
-                    location.isNotBlank() &&
-                    password.isNotBlank() &&
-                    (selectedRole == UserRole.CLIENT || craft.isNotBlank())
-        ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = MaterialTheme.colorScheme.onPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-            }
-            Text("Create Account")
         }
     }
 }
