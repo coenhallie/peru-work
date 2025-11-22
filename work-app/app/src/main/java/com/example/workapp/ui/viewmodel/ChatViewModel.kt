@@ -47,6 +47,16 @@ class ChatViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Refresh chat rooms
+     */
+    fun refresh() {
+        val uid = authRepository.currentUser?.uid
+        if (uid != null) {
+            loadChatRooms(uid)
+        }
+    }
+
     fun loadChatRooms(userId: String? = null) {
         val uid = userId ?: authRepository.currentUser?.uid ?: return
         

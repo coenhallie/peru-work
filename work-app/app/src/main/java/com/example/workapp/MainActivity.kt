@@ -22,6 +22,7 @@ import com.example.workapp.ui.components.shouldShowBottomBar
 import com.example.workapp.ui.theme.WorkAppTheme
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.ui.viewmodel.ChatViewModel
+import com.example.workapp.ui.viewmodel.JobViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -52,13 +53,15 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun WorkAppNavHost(
     authViewModel: AuthViewModel = hiltViewModel(),
-    chatViewModel: ChatViewModel = hiltViewModel()
+    chatViewModel: ChatViewModel = hiltViewModel(),
+    jobViewModel: JobViewModel = hiltViewModel()
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val currentUser by authViewModel.currentUser.collectAsState()
     val chatRooms by chatViewModel.chatRooms.collectAsState()
+    val totalApplicationCount by jobViewModel.totalApplicationCount.collectAsState()
     
     val totalUnreadCount = androidx.compose.runtime.remember(chatRooms, currentUser) {
         if (currentUser == null) 0
@@ -92,7 +95,8 @@ fun WorkAppNavHost(
                         }
                     },
                     currentUser = currentUser,
-                    unreadMessageCount = totalUnreadCount
+                    unreadMessageCount = totalUnreadCount,
+                    applicationCount = totalApplicationCount
                 )
             }
         },

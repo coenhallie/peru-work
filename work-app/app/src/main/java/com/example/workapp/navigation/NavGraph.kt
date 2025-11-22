@@ -180,6 +180,9 @@ fun NavGraph(
                 onEditJob = { jobId ->
                     navController.navigate(Screen.EditJob.createRoute(jobId))
                 },
+                onViewApplications = { jobId ->
+                    navController.navigate(Screen.ApplicationsList.createRoute(jobId))
+                },
                 currentUserId = currentUser?.id,
                 showMyJobs = false,
                 isCraftsman = isCraftsman
@@ -226,6 +229,9 @@ fun NavGraph(
                 },
                 onEditJob = { jobId ->
                     navController.navigate(Screen.EditJob.createRoute(jobId))
+                },
+                onViewApplications = { jobId ->
+                    navController.navigate(Screen.ApplicationsList.createRoute(jobId))
                 },
                 currentUserId = currentUser?.id,
                 showMyJobs = !isCraftsman,  // Only show "my posted jobs" for non-craftsmen

@@ -44,6 +44,13 @@ class CraftsmenViewModel @Inject constructor(
         loadCategories()
     }
 
+    /**
+     * Refresh craftsmen data
+     */
+    fun refresh() {
+        loadCraftsmen()
+    }
+
     private fun loadCraftsmen() {
         viewModelScope.launch {
             try {

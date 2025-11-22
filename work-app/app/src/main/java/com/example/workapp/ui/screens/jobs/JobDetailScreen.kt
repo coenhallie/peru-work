@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -86,7 +87,6 @@ fun JobDetailScreen(
 ) {
     val job by viewModel.currentJob.collectAsState()
     val hasApplied by applicationViewModel.hasApplied.collectAsState()
-    val applicationCount by applicationViewModel.applicationCount.collectAsState()
     val submitApplicationState by applicationViewModel.submitApplicationState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -95,11 +95,15 @@ fun JobDetailScreen(
     var isMapVisible by remember { mutableStateOf(true) }
 
     // Check application status when screen is opened
-    LaunchedEffect(jobId) {
+    LaunchedEffect(jobId, job, currentUserId, isCraftsman) {
+        android.util.Log.d("JobDetailScreen", "Debug: jobId=$jobId")
+        android.util.Log.d("JobDetailScreen", "Debug: currentUserId=$currentUserId")
+        android.util.Log.d("JobDetailScreen", "Debug: isCraftsman=$isCraftsman")
+        android.util.Log.d("JobDetailScreen", "Debug: job?.clientId=${job?.clientId}")
+        android.util.Log.d("JobDetailScreen", "Debug: job?.applicationCount=${job?.applicationCount}")
+        
         if (isCraftsman) {
             applicationViewModel.checkIfApplied(jobId)
-        } else {
-            applicationViewModel.loadApplicationCount(jobId)
         }
     }
     
@@ -189,6 +193,64 @@ fun JobDetailScreen(
                 )
             )
         },
+        bottomBar = {
+            if (job != null) {
+                Surface(
+                    shadowElevation = 8.dp,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        // DEBUG INFO - REMOVE LATER
+                        Text(
+                            text = "Debug: isCraftsman=$isCraftsman, AppCount=${job!!.applicationCount}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "ClientID=${job!!.clientId}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Text(
+                            text = "UserID=$currentUserId",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        
+                        if (!isCraftsman && job!!.clientId == currentUserId && job!!.applicationCount > 0) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { onNavigateToApplications(jobId) },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(56.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = AppIcons.Content.person,
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .padding(end = 8.dp)
+                                        .size(IconSizes.medium)
+                                )
+                                Text(
+                                    text = "View Applications (${job!!.applicationCount})",
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         if (job == null) {
@@ -208,7 +270,7 @@ fun JobDetailScreen(
                 currentUserId = currentUserId,
                 isCraftsman = isCraftsman,
                 hasApplied = hasApplied,
-                applicationCount = applicationCount,
+                applicationCount = job!!.applicationCount,
                 onApply = { showApplicationDialog = true },
                 onViewApplications = { onNavigateToApplications(jobId) },
                 isMapVisible = isMapVisible,
@@ -571,30 +633,7 @@ private fun JobDetailContent(
                     }
                 }
             } else if (!isCraftsman && job.clientId == currentUserId && applicationCount > 0) {
-                // Client viewing their job with applications
-                Button(
-                    onClick = onViewApplications,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary
-                    )
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Content.person,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(end = 8.dp)
-                            .size(IconSizes.medium)
-                    )
-                    Text(
-                        text = "View Applications ($applicationCount)",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                }
+                // Client viewing their job with applications - Button moved to sticky bottom bar
             }
 
             // Spacing at bottom

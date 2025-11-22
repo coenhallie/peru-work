@@ -155,6 +155,13 @@ class ApplicationViewModel @Inject constructor(
     }
 
     /**
+     * Refresh application data
+     */
+    fun refresh() {
+        loadMyApplications()
+    }
+
+    /**
      * Load all applications submitted by current craftsman
      */
     fun loadMyApplications() {

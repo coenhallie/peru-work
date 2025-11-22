@@ -91,7 +91,8 @@ fun BottomNavigationBar(
     modifier: Modifier = Modifier,
     visible: Boolean = true,
     currentUser: User? = null,
-    unreadMessageCount: Int = 0
+    unreadMessageCount: Int = 0,
+    applicationCount: Int = 0
 ) {
     // Create destinations based on user role
     // IMPORTANT: Craftsmen should NOT see the Create button
@@ -148,6 +149,23 @@ fun BottomNavigationBar(
                                     badge = {
                                         Badge {
                                             Text(text = unreadMessageCount.toString())
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = AppIcons.getNavigationIcon(
+                                            route = destination.route,
+                                            selected = selected
+                                        ),
+                                        contentDescription = destination.contentDescription,
+                                        modifier = Modifier.size(IconSizes.medium)
+                                    )
+                                }
+                            } else if (destination is BottomNavDestination.Listings && !destination.isCraftsman && applicationCount > 0) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge {
+                                            Text(text = applicationCount.toString())
                                         }
                                     }
                                 ) {

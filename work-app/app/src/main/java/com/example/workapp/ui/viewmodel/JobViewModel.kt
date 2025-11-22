@@ -51,6 +51,9 @@ class JobViewModel @Inject constructor(
     private val _currentJob = MutableStateFlow<Job?>(null)
     val currentJob: StateFlow<Job?> = _currentJob.asStateFlow()
 
+    private val _totalApplicationCount = MutableStateFlow(0)
+    val totalApplicationCount: StateFlow<Int> = _totalApplicationCount.asStateFlow()
+
     private val _isFiltering = MutableStateFlow(false)
     val isFiltering: StateFlow<Boolean> = _isFiltering.asStateFlow()
 
@@ -99,6 +102,7 @@ class JobViewModel @Inject constructor(
         // Clear data
         _openJobs.value = emptyList()
         _myJobs.value = emptyList()
+        _totalApplicationCount.value = 0
         _currentJob.value = null
         
         // Reset states
@@ -191,6 +195,14 @@ class JobViewModel @Inject constructor(
     }
 
     /**
+     * Refresh job data
+     */
+    fun refresh() {
+        loadOpenJobs()
+        loadMyJobs()
+    }
+
+    /**
      * Load all open jobs (for craftsmen)
      */
     fun loadOpenJobs() {
@@ -275,6 +287,7 @@ class JobViewModel @Inject constructor(
                 // Load jobs created by this client
                 jobRepository.getJobsByClient(currentUser.uid).collect { jobs ->
                     _myJobs.value = jobs
+                    _totalApplicationCount.value = jobs.sumOf { it.applicationCount }
                 }
             } else {
                 _myJobs.value = emptyList()

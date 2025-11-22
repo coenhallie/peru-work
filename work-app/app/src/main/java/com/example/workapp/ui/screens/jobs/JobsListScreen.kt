@@ -35,12 +35,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +66,8 @@ import com.example.workapp.ui.viewmodel.JobViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Screen displaying jobs based on user role:
@@ -76,6 +82,7 @@ fun JobsListScreen(
     applicationViewModel: ApplicationViewModel = hiltViewModel(),
     onJobClick: (String) -> Unit = {},
     onEditJob: (String) -> Unit = {},
+    onViewApplications: (String) -> Unit = {},
     currentUserId: String? = null,
     showMyJobs: Boolean = false,
     isCraftsman: Boolean = false
@@ -91,6 +98,9 @@ fun JobsListScreen(
     var jobToDelete by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedDistance by remember { mutableStateOf<Double?>(null) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val pullToRefreshState = rememberPullToRefreshState()
     
     // Load applications if craftsman
     LaunchedEffect(isCraftsman) {
@@ -223,25 +233,50 @@ fun JobsListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (showApplications) {
-            // Show applications for craftsmen
-            CraftsmanApplicationsList(
-                applications = myApplications,
-                padding = padding,
-                onJobClick = onJobClick
-            )
-        } else {
-            // Show jobs list for regular users or "My Jobs"
-            if (jobsList.isEmpty()) {
-                // Empty state
-                Column(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                scope.launch {
+                    isRefreshing = true
+                    jobViewModel.refresh()
+                    if (isCraftsman && !showMyJobs) {
+                        applicationViewModel.refresh()
+                    }
+                    delay(500)
+                    isRefreshing = false
+                }
+            },
+            state = pullToRefreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullToRefreshState,
+                    isRefreshing = isRefreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (showApplications) {
+                // Show applications for craftsmen
+                CraftsmanApplicationsList(
+                    applications = myApplications,
+                    onJobClick = onJobClick
+                )
+            } else {
+                // Show jobs list for regular users or "My Jobs"
+                if (jobsList.isEmpty()) {
+                    // Empty state
+                    Column(
+                        modifier = modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
                     Icon(
                         imageVector = AppIcons.Content.work,
                         contentDescription = null,
@@ -266,15 +301,13 @@ fun JobsListScreen(
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                     )
                 }
-            } else {
-                // Jobs list
-                LazyColumn(
-                    modifier = modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+                } else {
+                    // Jobs list
+                    LazyColumn(
+                        modifier = modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                     items(jobsList) { job ->
                         // Only show edit/delete buttons if the current user created this job
                         val isOwner = currentUserId != null && currentUserId == job.clientId
@@ -288,8 +321,12 @@ fun JobsListScreen(
                                     jobToDelete = job.id
                                     showDeleteDialog = true
                                 }
+                            } else null,
+                            onViewApplications = if (isOwner && job.applicationCount > 0) {
+                                { onViewApplications(job.id) }
                             } else null
                         )
+                        }
                     }
                 }
             }
@@ -300,17 +337,16 @@ fun JobsListScreen(
 /**
  * List of applications for craftsmen
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CraftsmanApplicationsList(
     applications: List<JobApplication>,
-    padding: PaddingValues,
     onJobClick: (String) -> Unit
 ) {
     if (applications.isEmpty()) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
                 .padding(24.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -340,9 +376,7 @@ private fun CraftsmanApplicationsList(
         }
     } else {
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -529,7 +563,8 @@ private fun JobCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onViewApplications: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier
@@ -546,13 +581,37 @@ private fun JobCard(
                 .padding(16.dp)
         ) {
             // Job Image (smaller and on the left)
-            JobImage(
-                imageUrl = job.imageUrl,
-                category = job.category,
+            Box(
                 modifier = Modifier
                     .size(100.dp)
                     .clip(MaterialTheme.shapes.small)
-            )
+            ) {
+                JobImage(
+                    imageUrl = job.imageUrl,
+                    category = job.category,
+                    modifier = Modifier.fillMaxSize()
+                )
+                
+                // Application Badge
+                if (job.applicationCount > 0) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.error,
+                        shape = MaterialTheme.shapes.extraSmall,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                    ) {
+                        Text(
+                            text = "${job.applicationCount} Application${if (job.applicationCount > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onError,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -676,6 +735,39 @@ private fun JobCard(
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
+                }
+
+                // Review Applications Button
+                if (onViewApplications != null && job.applicationCount > 0) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    androidx.compose.material3.HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onViewApplications)
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.person,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(IconSizes.small)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Review ${job.applicationCount} Application${if (job.applicationCount > 1) "s" else ""}",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
         }
