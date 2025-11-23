@@ -1,12 +1,18 @@
 package com.example.workapp.ui.screens.chat
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,6 +42,7 @@ fun ChatScreen(
     val messages by viewModel.messages.collectAsState()
     val chatRooms by viewModel.chatRooms.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
+    val isUploading by viewModel.isUploading.collectAsState()
     
     // Find current chat room to display title
     val currentRoom = chatRooms.find { it.id == chatRoomId }
@@ -44,6 +51,15 @@ fun ChatScreen(
     
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
+    
+    // Image picker launcher
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { selectedUri ->
+            viewModel.sendImageMessage(chatRoomId, selectedUri)
+        }
+    }
 
     LaunchedEffect(chatRoomId) {
         viewModel.loadMessages(chatRoomId)
@@ -91,7 +107,11 @@ fun ChatScreen(
                 onSend = {
                     viewModel.sendMessage(chatRoomId, messageText)
                     messageText = ""
-                }
+                },
+                onAttachImage = {
+                    imagePickerLauncher.launch("image/*")
+                },
+                isUploading = isUploading
             )
         }
     ) { paddingValues ->
@@ -139,12 +159,37 @@ fun MessageBubble(
             ),
             modifier = Modifier.widthIn(max = 280.dp)
         ) {
-            Text(
-                text = message.message,
-                modifier = Modifier.padding(12.dp),
-                color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                // Display image if it's an IMAGE type message
+                if (message.type == MessageType.IMAGE.name && message.attachmentUrl != null) {
+                    AsyncImage(
+                        model = message.attachmentUrl,
+                        contentDescription = "Shared image",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 200.dp)
+                            .clip(RoundedCornerShape(8.dp)),
+                        contentScale = ContentScale.Crop
+                    )
+                    
+                    // Add spacing if there's also text
+                    if (message.message.isNotBlank() && message.message != "Image") {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+                
+                // Display text if not just "Image" placeholder
+                if (message.message.isNotBlank() &&
+                    (message.type != MessageType.IMAGE.name || message.message != "Image")) {
+                    Text(
+                        text = message.message,
+                        color = if (isCurrentUser) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
         
         Spacer(modifier = Modifier.height(4.dp))
@@ -183,11 +228,16 @@ fun SystemMessage(text: String) {
 fun ChatInput(
     value: String,
     onValueChange: (String) -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    onAttachImage: () -> Unit,
+    isUploading: Boolean = false
 ) {
     Surface(
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 3.dp
+        tonalElevation = 3.dp,
+        modifier = Modifier
+            .fillMaxWidth()
+            .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Row(
             modifier = Modifier
@@ -195,25 +245,52 @@ fun ChatInput(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Image attachment button
+            IconButton(
+                onClick = onAttachImage,
+                enabled = !isUploading
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Image,
+                    contentDescription = "Attach image",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
             OutlinedTextField(
                 value = value,
                 onValueChange = onValueChange,
-                placeholder = { Text("Type a message...") },
+                placeholder = {
+                    Text(
+                        if (isUploading) "Uploading image..." else "Type a message..."
+                    )
+                },
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                maxLines = 4
+                maxLines = 4,
+                enabled = !isUploading
             )
             
             Spacer(modifier = Modifier.width(8.dp))
             
             FilledIconButton(
                 onClick = onSend,
-                enabled = value.isNotBlank()
+                enabled = value.isNotBlank() && !isUploading
             ) {
-                Icon(
-                    imageVector = AppIcons.Actions.send,
-                    contentDescription = "Send"
-                )
+                if (isUploading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = AppIcons.Actions.send,
+                        contentDescription = "Send"
+                    )
+                }
             }
         }
     }

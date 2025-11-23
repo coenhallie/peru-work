@@ -104,7 +104,7 @@ class ApplicationViewModel @Inject constructor(
                     clientId = clientId,
                     clientName = clientName,
                     craftsmanId = currentUser.uid,
-                    craftsmanName = currentUser.displayName ?: "Unknown",
+                    craftsmanName = userProfile.name,
                     craftsmanProfileImage = userProfile.profileImageUrl,
                     craftsmanRating = userProfile.rating,
                     craftsmanExperience = userProfile.experience,

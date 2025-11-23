@@ -3,9 +3,12 @@ package com.example.workapp.ui.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.workapp.data.model.PreviousJob
 import com.example.workapp.data.model.User
 import com.example.workapp.data.model.UserRole
 import com.example.workapp.data.repository.AuthRepository
+import com.example.workapp.data.repository.CloudinaryRepository
+import com.example.workapp.ui.screens.auth.PreviousJobItem
 import com.google.firebase.auth.FirebaseUser
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,7 +22,8 @@ import javax.inject.Inject
  */
 @HiltViewModel
 class AuthViewModel @Inject constructor(
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val cloudinaryRepository: CloudinaryRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
@@ -31,6 +35,9 @@ class AuthViewModel @Inject constructor(
     // Cached user role to avoid repeated checks
     private val _cachedUserRole = MutableStateFlow<UserRole?>(null)
     val cachedUserRole: StateFlow<UserRole?> = _cachedUserRole.asStateFlow()
+
+    private val _emailValidationState = MutableStateFlow<EmailValidationState>(EmailValidationState.Idle)
+    val emailValidationState: StateFlow<EmailValidationState> = _emailValidationState.asStateFlow()
     
     // Quick access to role information
     val isCraftsman: Boolean
@@ -70,7 +77,8 @@ class AuthViewModel @Inject constructor(
         craft: String? = null,
         bio: String? = null,
         workDistance: Int? = null,
-        imageUri: Uri? = null
+        imageUri: Uri? = null,
+        previousJobs: List<PreviousJobItem>? = null
     ) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -86,27 +94,33 @@ class AuthViewModel @Inject constructor(
                 bio = bio,
                 workDistance = workDistance
             ).onSuccess { user ->
+                // Upload profile image if provided
+                var updatedUser = user
                 if (imageUri != null) {
-                    // Upload image and update profile
                     authRepository.updateProfileWithImage(user, imageUri)
-                        .onSuccess { updatedUser ->
-                            _currentUser.value = updatedUser
-                            _cachedUserRole.value = updatedUser.userRole
-                            _authState.value = AuthState.Authenticated(updatedUser)
+                        .onSuccess { userWithImage ->
+                            updatedUser = userWithImage
                         }
                         .onFailure { error ->
-                            // Signup succeeded but image upload failed
-                            // We still consider user authenticated but maybe show a warning?
-                            // For now, just set authenticated with original user
-                            _currentUser.value = user
-                            _cachedUserRole.value = user.userRole
-                            _authState.value = AuthState.Authenticated(user)
+                            // Continue with user without profile image
                         }
-                } else {
-                    _currentUser.value = user
-                    _cachedUserRole.value = user.userRole
-                    _authState.value = AuthState.Authenticated(user)
                 }
+                
+                // Upload previous jobs if provided
+                if (previousJobs != null && previousJobs.isNotEmpty()) {
+                    val uploadedJobs = uploadPreviousJobs(previousJobs)
+                    if (uploadedJobs.isNotEmpty()) {
+                        updatedUser = updatedUser.copy(previousJobs = uploadedJobs)
+                        authRepository.updateUserProfile(updatedUser)
+                            .onSuccess { finalUser ->
+                                updatedUser = finalUser
+                            }
+                    }
+                }
+                
+                _currentUser.value = updatedUser
+                _cachedUserRole.value = updatedUser.userRole
+                _authState.value = AuthState.Authenticated(updatedUser)
             }.onFailure { error ->
                 _authState.value = AuthState.Error(error.message ?: "Sign up failed")
             }
@@ -166,7 +180,8 @@ class AuthViewModel @Inject constructor(
         craft: String? = null,
         bio: String? = null,
         workDistance: Int? = null,
-        imageUri: Uri? = null
+        imageUri: Uri? = null,
+        previousJobs: List<PreviousJobItem>? = null
     ) {
         viewModelScope.launch {
             _authState.value = AuthState.Loading
@@ -177,7 +192,7 @@ class AuthViewModel @Inject constructor(
                 return@launch
             }
 
-            val user = User(
+            var user = User(
                 id = firebaseUser.uid,
                 email = email,
                 name = name,
@@ -194,11 +209,26 @@ class AuthViewModel @Inject constructor(
                 profileImageUrl = firebaseUser.photoUrl?.toString() // Default to Google photo
             )
 
+            // Complete profile with image
             authRepository.completeProfile(user, imageUri)
                 .onSuccess { updatedUser ->
-                    _currentUser.value = updatedUser
-                    _cachedUserRole.value = updatedUser.userRole
-                    _authState.value = AuthState.Authenticated(updatedUser)
+                    var finalUser = updatedUser
+                    
+                    // Upload previous jobs if provided
+                    if (previousJobs != null && previousJobs.isNotEmpty()) {
+                        val uploadedJobs = uploadPreviousJobs(previousJobs)
+                        if (uploadedJobs.isNotEmpty()) {
+                            finalUser = finalUser.copy(previousJobs = uploadedJobs)
+                            authRepository.updateUserProfile(finalUser)
+                                .onSuccess { userWithJobs ->
+                                    finalUser = userWithJobs
+                                }
+                        }
+                    }
+                    
+                    _currentUser.value = finalUser
+                    _cachedUserRole.value = finalUser.userRole
+                    _authState.value = AuthState.Authenticated(finalUser)
                 }
                 .onFailure { error ->
                     _authState.value = AuthState.Error(error.message ?: "Failed to complete profile")
@@ -320,6 +350,75 @@ class AuthViewModel @Inject constructor(
                 }
         }
     }
+    
+    /**
+     * Upload previous jobs photos to Cloudinary and return PreviousJob objects with URLs
+     */
+    private suspend fun uploadPreviousJobs(previousJobs: List<PreviousJobItem>): List<PreviousJob> {
+        val uploadedJobs = mutableListOf<PreviousJob>()
+        
+        previousJobs.forEach { jobItem ->
+            val photoUrls = mutableListOf<String>()
+            
+            // Upload each photo to Cloudinary
+            jobItem.photoUris.forEach { uri ->
+                try {
+                    cloudinaryRepository.uploadImage(uri, "previous_jobs")
+                        .onSuccess { url ->
+                            photoUrls.add(url)
+                        }
+                        .onFailure { error ->
+                            // Log error but continue with other photos
+                            android.util.Log.e("AuthViewModel", "Failed to upload photo", error)
+                        }
+                } catch (e: Exception) {
+                    android.util.Log.e("AuthViewModel", "Error uploading photo", e)
+                }
+            }
+            
+            // Add job even if no photos uploaded successfully (description is still valuable)
+            uploadedJobs.add(
+                PreviousJob(
+                    description = jobItem.description,
+                    photoUrls = photoUrls
+                )
+            )
+        }
+        
+        return uploadedJobs
+    }
+
+
+    fun validateEmail(email: String) {
+        if (email.isBlank()) {
+            _emailValidationState.value = EmailValidationState.Invalid("Email cannot be empty")
+            return
+        }
+
+        if (!android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            _emailValidationState.value = EmailValidationState.Invalid("Invalid email format")
+            return
+        }
+
+        viewModelScope.launch {
+            _emailValidationState.value = EmailValidationState.Validating
+            authRepository.checkEmailExists(email)
+                .onSuccess { exists ->
+                    if (exists) {
+                        _emailValidationState.value = EmailValidationState.Invalid("Email already registered")
+                    } else {
+                        _emailValidationState.value = EmailValidationState.Valid
+                    }
+                }
+                .onFailure { error ->
+                    _emailValidationState.value = EmailValidationState.Invalid("Failed to validate email: ${error.message}")
+                }
+        }
+    }
+
+    fun resetEmailValidation() {
+        _emailValidationState.value = EmailValidationState.Idle
+    }
 }
 
 sealed class AuthState {
@@ -330,4 +429,11 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
     data object PasswordResetSent : AuthState()
     data class NeedsProfileCompletion(val firebaseUser: FirebaseUser) : AuthState()
+}
+
+sealed class EmailValidationState {
+    data object Idle : EmailValidationState()
+    data object Validating : EmailValidationState()
+    data object Valid : EmailValidationState()
+    data class Invalid(val reason: String) : EmailValidationState()
 }

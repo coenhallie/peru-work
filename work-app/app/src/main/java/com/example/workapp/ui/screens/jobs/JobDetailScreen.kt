@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -21,6 +23,9 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -95,13 +100,7 @@ fun JobDetailScreen(
     var isMapVisible by remember { mutableStateOf(true) }
 
     // Check application status when screen is opened
-    LaunchedEffect(jobId, job, currentUserId, isCraftsman) {
-        android.util.Log.d("JobDetailScreen", "Debug: jobId=$jobId")
-        android.util.Log.d("JobDetailScreen", "Debug: currentUserId=$currentUserId")
-        android.util.Log.d("JobDetailScreen", "Debug: isCraftsman=$isCraftsman")
-        android.util.Log.d("JobDetailScreen", "Debug: job?.clientId=${job?.clientId}")
-        android.util.Log.d("JobDetailScreen", "Debug: job?.applicationCount=${job?.applicationCount}")
-        
+    LaunchedEffect(jobId, isCraftsman) {
         if (isCraftsman) {
             applicationViewModel.checkIfApplied(jobId)
         }
@@ -168,6 +167,39 @@ fun JobDetailScreen(
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        floatingActionButton = {
+            // Show FAB for CLIENT viewing their own job with applications
+            if (job != null && job!!.applicationCount > 0 && !isCraftsman) {
+                val isJobOwner = currentUserId != null &&
+                                currentUserId.isNotEmpty() &&
+                                job!!.clientId == currentUserId
+                
+                if (isJobOwner) {
+                    ExtendedFloatingActionButton(
+                        onClick = { onNavigateToApplications(jobId) },
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 6.dp,
+                            pressedElevation = 12.dp
+                        )
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.person,
+                            contentDescription = "Review Applications",
+                            modifier = Modifier.size(IconSizes.medium)
+                        )
+                        Spacer(modifier = Modifier.padding(4.dp))
+                        Text(
+                            text = "Review (${job!!.applicationCount})",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        )
+                    }
+                }
+            }
+        },
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -192,64 +224,6 @@ fun JobDetailScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
-        },
-        bottomBar = {
-            if (job != null) {
-                Surface(
-                    shadowElevation = 8.dp,
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        // DEBUG INFO - REMOVE LATER
-                        Text(
-                            text = "Debug: isCraftsman=$isCraftsman, AppCount=${job!!.applicationCount}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "ClientID=${job!!.clientId}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        Text(
-                            text = "UserID=$currentUserId",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                        
-                        if (!isCraftsman && job!!.clientId == currentUserId && job!!.applicationCount > 0) {
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Button(
-                                onClick = { onNavigateToApplications(jobId) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            ) {
-                                Icon(
-                                    imageVector = AppIcons.Content.person,
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .padding(end = 8.dp)
-                                        .size(IconSizes.medium)
-                                )
-                                Text(
-                                    text = "View Applications (${job!!.applicationCount})",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
@@ -308,23 +282,6 @@ private fun JobDetailContent(
                 .fillMaxWidth()
                 .height(250.dp)
         )
-
-        // Map section
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-                .padding(horizontal = 16.dp, vertical = 8.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-        ) {
-            if (isMapVisible) {
-                LocationMapSection(
-                    location = job.location,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-        }
 
         // Job information
         Column(
@@ -480,6 +437,28 @@ private fun JobDetailContent(
                         label = "Posted",
                         value = formatDate(job.createdAt)
                     )
+                }
+            }
+
+            // Map section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer
+                )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp)
+                ) {
+                    if (isMapVisible) {
+                        LocationMapSection(
+                            location = job.location,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
             }
 

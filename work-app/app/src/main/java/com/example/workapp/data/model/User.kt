@@ -4,6 +4,15 @@ import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.IgnoreExtraProperties
 
 /**
+ * Represents a previous job/project completed by a craftsman
+ */
+@IgnoreExtraProperties
+data class PreviousJob(
+    val description: String = "",
+    val photoUrls: List<String> = emptyList() // Max 2 photos
+)
+
+/**
  * User data model representing both clients and craftsmen
  *
  * IMPORTANT: Supports legacy database records that use 'role' field name
@@ -32,7 +41,8 @@ data class User(
     val specialties: List<String>? = null,
     val hourlyRate: Double? = null,
     val availability: String? = null,
-    val workDistance: Int? = null
+    val workDistance: Int? = null,
+    val previousJobs: List<PreviousJob>? = null
 ) {
     // Computed property for type-safe role access
     @get:Exclude

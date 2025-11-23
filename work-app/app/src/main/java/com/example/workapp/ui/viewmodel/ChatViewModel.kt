@@ -1,11 +1,14 @@
 package com.example.workapp.ui.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.workapp.data.model.ChatRoom
 import com.example.workapp.data.model.Message
+import com.example.workapp.data.model.MessageType
 import com.example.workapp.data.repository.ChatRepository
 import com.example.workapp.data.repository.AuthRepository
+import com.example.workapp.data.repository.CloudinaryRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +20,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val cloudinaryRepository: CloudinaryRepository
 ) : ViewModel() {
 
     private val _chatRooms = MutableStateFlow<List<ChatRoom>>(emptyList())
@@ -31,6 +35,9 @@ class ChatViewModel @Inject constructor(
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    private val _isUploading = MutableStateFlow(false)
+    val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
 
     private var chatRoomsJob: kotlinx.coroutines.Job? = null
 
@@ -136,6 +143,50 @@ class ChatViewModel @Inject constructor(
                 .onFailure { e ->
                     _error.value = "Failed to send message: ${e.message}"
                 }
+        }
+    }
+    
+    /**
+     * Send a message with an image attachment
+     */
+    fun sendImageMessage(chatRoomId: String, imageUri: Uri) {
+        val currentUser = authRepository.currentUser ?: return
+
+        viewModelScope.launch {
+            _isUploading.value = true
+            
+            try {
+                // First upload the image to Cloudinary
+                cloudinaryRepository.uploadImage(imageUri, "chat_images")
+                    .onSuccess { imageUrl ->
+                        // Determine sender details
+                        val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
+                        
+                        val role = if (room.clientId == currentUser.uid) "CLIENT" else "CRAFTSMAN"
+                        val senderName = if (role == "CLIENT") room.clientName else room.craftsmanName
+                        
+                        val message = Message(
+                            chatRoomId = chatRoomId,
+                            senderId = currentUser.uid,
+                            senderName = senderName,
+                            senderRole = role,
+                            message = "Image", // Default message for images
+                            timestamp = System.currentTimeMillis(),
+                            type = MessageType.IMAGE.name,
+                            attachmentUrl = imageUrl
+                        )
+
+                        chatRepository.sendMessage(chatRoomId, message)
+                            .onFailure { e ->
+                                _error.value = "Failed to send image: ${e.message}"
+                            }
+                    }
+                    .onFailure { e ->
+                        _error.value = "Failed to upload image: ${e.message}"
+                    }
+            } finally {
+                _isUploading.value = false
+            }
         }
     }
     

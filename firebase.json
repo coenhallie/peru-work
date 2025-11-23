@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "work-app/functions"
+  },
   "firestore": {
     "database": "(default)",
     "location": "nam5",

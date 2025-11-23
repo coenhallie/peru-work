@@ -33,8 +33,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -75,12 +78,16 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.example.workapp.data.model.PreviousJob
 import com.example.workapp.data.model.UserRole
 import com.example.workapp.ui.components.AddressAutofillTextField
 import com.example.workapp.ui.components.JobCategorySelector
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AuthViewModel
+import com.example.workapp.ui.viewmodel.EmailValidationState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import kotlin.math.roundToInt
 
 @Composable
@@ -94,7 +101,7 @@ fun SignUpStepperScreen(
     isGoogleSignIn: Boolean = false
 ) {
     var currentStep by remember { mutableIntStateOf(0) }
-    val totalSteps = 8 // Max possible steps
+    val totalSteps = 9 // Max possible steps (added previous jobs step)
 
     // Form State
     var selectedRole by remember { mutableStateOf(UserRole.CLIENT) }
@@ -109,6 +116,19 @@ fun SignUpStepperScreen(
     var imageUri by remember { mutableStateOf<Uri?>(initialImageUri) }
     var availability by remember { mutableStateOf("") }
     var workDistance by remember { mutableStateOf(10f) } // Default 10km
+    
+    // Previous jobs state for craftsmen
+    var previousJobsList by remember { mutableStateOf<List<PreviousJobItem>>(emptyList()) }
+
+    // Email validation state
+    val emailValidationState by viewModel.emailValidationState.collectAsState()
+    
+    LaunchedEffect(emailValidationState) {
+        if (emailValidationState is EmailValidationState.Valid) {
+            currentStep++
+            viewModel.resetEmailValidation()
+        }
+    }
 
     // Determine if current step is valid
     val isStepValid = when (currentStep) {
@@ -117,14 +137,15 @@ fun SignUpStepperScreen(
         2 -> phone.isNotBlank()
         3 -> location.isNotBlank()
         4 -> if (selectedRole == UserRole.CRAFTSMAN) craft.isNotBlank() && bio.isNotBlank() else true
-        5 -> true // Photo is optional
-        6 -> if (selectedRole == UserRole.CRAFTSMAN) availability.isNotBlank() else true
-        7 -> true // Distance has default
+        5 -> true // Previous jobs are optional
+        6 -> true // Profile photo is optional
+        7 -> if (selectedRole == UserRole.CRAFTSMAN) availability.isNotBlank() else true
+        8 -> true // Distance has default
         else -> false
     }
 
     // Calculate progress
-    val progress = (currentStep + 1).toFloat() / if (selectedRole == UserRole.CLIENT) 5 else 8
+    val progress = (currentStep + 1).toFloat() / if (selectedRole == UserRole.CLIENT) 5 else 9
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -157,7 +178,7 @@ fun SignUpStepperScreen(
             Spacer(modifier = Modifier.width(16.dp))
             
             Text(
-                text = "${currentStep + 1}/${if (selectedRole == UserRole.CLIENT) 5 else 8}",
+                text = "${currentStep + 1}/${if (selectedRole == UserRole.CLIENT) 5 else 9}",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -203,12 +224,18 @@ fun SignUpStepperScreen(
                             name = name,
                             onNameChange = { name = it },
                             email = email,
-                            onEmailChange = { email = it },
+                            onEmailChange = { 
+                                email = it 
+                                if (emailValidationState is EmailValidationState.Invalid) {
+                                    viewModel.resetEmailValidation()
+                                }
+                            },
                             password = password,
                             onPasswordChange = { password = it },
                             passwordVisible = passwordVisible,
                             onPasswordVisibilityChange = { passwordVisible = it },
-                            showPassword = !isGoogleSignIn
+                            showPassword = !isGoogleSignIn,
+                            emailError = (emailValidationState as? EmailValidationState.Invalid)?.reason
                         )
                         2 -> ContactStep(
                             phone = phone,
@@ -226,20 +253,28 @@ fun SignUpStepperScreen(
                                 onBioChange = { bio = it }
                             )
                         } else {
-                            // Skip for client
-                            PhotoUploadStep(imageUri, { imageUri = it })
+                            // Skip for client - go to profile photo
+                            ProfilePhotoUploadStep(imageUri, { imageUri = it })
                         }
                         5 -> if (selectedRole == UserRole.CRAFTSMAN) {
-                             PhotoUploadStep(imageUri, { imageUri = it })
+                            PreviousJobsStep(
+                                previousJobs = previousJobsList,
+                                onPreviousJobsChange = { previousJobsList = it }
+                            )
                         } else {
-                             // End for client (should not reach here via logic but for safety)
-                             Text("Ready to finish!")
+                            // End for client (should not reach here via logic but for safety)
+                            Text("Ready to finish!")
                         }
-                        6 -> AvailabilityStep(
+                        6 -> if (selectedRole == UserRole.CRAFTSMAN) {
+                            ProfilePhotoUploadStep(imageUri, { imageUri = it })
+                        } else {
+                            Text("Ready to finish!")
+                        }
+                        7 -> AvailabilityStep(
                             availability = availability,
                             onAvailabilityChange = { availability = it }
                         )
-                        7 -> WorkDistanceStep(
+                        8 -> WorkDistanceStep(
                             distance = workDistance,
                             onDistanceChange = { workDistance = it }
                         )
@@ -265,63 +300,61 @@ fun SignUpStepperScreen(
 
             Button(
                 onClick = {
-                    val maxSteps = if (selectedRole == UserRole.CLIENT) 4 else 7
-                    if (currentStep < maxSteps) {
-                        // Skip steps for client
-                        if (selectedRole == UserRole.CLIENT && currentStep == 3) {
-                            // Client goes from Location (3) to Photo (used as step 4 logic)
-                            // But wait, my logic above in 'when' handles step 4 as Photo for client?
-                            // Let's re-verify the 'when' block logic.
-                            // Step 4 in 'when': if Craftsman -> Details. If Client -> Photo.
-                            // So for Client, step 4 is Photo.
-                            // Step 5 in 'when': if Craftsman -> Photo. If Client -> "Ready".
-                            // So Client finishes at step 4 (Photo).
-                            currentStep++
-                        } else {
-                            currentStep++
-                        }
+                    if (currentStep == 1) {
+                        viewModel.validateEmail(email)
                     } else {
-                        // Submit
-                        if (isGoogleSignIn) {
-                            viewModel.completeProfile(
-                                email = email.trim(),
-                                name = name.trim(),
-                                phone = phone.trim(),
-                                location = location.trim(),
-                                role = selectedRole,
-                                craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                                bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
-                                workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
-                                imageUri = imageUri
-                            )
+                        val maxSteps = if (selectedRole == UserRole.CLIENT) 4 else 8
+                        if (currentStep < maxSteps) {
+                            currentStep++
                         } else {
-                            viewModel.signUp(
-                                email = email.trim(),
-                                password = password,
-                                name = name.trim(),
-                                phone = phone.trim(),
-                                location = location.trim(),
-                                role = selectedRole,
-                                craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                                bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
-                                workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
-                                imageUri = imageUri
-                            )
+                            // Submit - convert previousJobsList to actual data
+                            val previousJobs = if (selectedRole == UserRole.CRAFTSMAN && previousJobsList.isNotEmpty()) {
+                                previousJobsList
+                            } else {
+                                null
+                            }
+                            
+                            if (isGoogleSignIn) {
+                                viewModel.completeProfile(
+                                    email = email.trim(),
+                                    name = name.trim(),
+                                    phone = phone.trim(),
+                                    location = location.trim(),
+                                    role = selectedRole,
+                                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
+                                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
+                                    workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
+                                    imageUri = imageUri,
+                                    previousJobs = previousJobs
+                                )
+                            } else {
+                                viewModel.signUp(
+                                    email = email.trim(),
+                                    password = password,
+                                    name = name.trim(),
+                                    phone = phone.trim(),
+                                    location = location.trim(),
+                                    role = selectedRole,
+                                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
+                                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
+                                    workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
+                                    imageUri = imageUri,
+                                    previousJobs = previousJobs
+                                )
+                            }
                         }
-                        // Image upload is now handled within the ViewModel's signUp function
-
                     }
                 },
-                enabled = isStepValid && !isLoading,
+                enabled = isStepValid && !isLoading && emailValidationState !is EmailValidationState.Validating,
                 modifier = Modifier.width(120.dp)
             ) {
-                if (isLoading) {
+                if (isLoading || emailValidationState is EmailValidationState.Validating) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    val isLastStep = if (selectedRole == UserRole.CLIENT) currentStep == 4 else currentStep == 7
+                    val isLastStep = if (selectedRole == UserRole.CLIENT) currentStep == 4 else currentStep == 8
                     Text(if (isLastStep) "Finish" else "Next")
                 }
             }
@@ -419,7 +452,8 @@ fun BasicInfoStep(
     onPasswordChange: (String) -> Unit,
     passwordVisible: Boolean,
     onPasswordVisibilityChange: (Boolean) -> Unit,
-    showPassword: Boolean = true
+    showPassword: Boolean = true,
+    emailError: String? = null
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -446,7 +480,9 @@ fun BasicInfoStep(
             leadingIcon = { Icon(AppIcons.Form.email, null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            singleLine = true,
+            isError = emailError != null,
+            supportingText = { if (emailError != null) Text(emailError) }
         )
 
         if (showPassword) {
@@ -553,7 +589,7 @@ fun CraftsmanDetailsStep(
 }
 
 @Composable
-fun PhotoUploadStep(
+fun ProfilePhotoUploadStep(
     imageUri: Uri?,
     onImageSelected: (Uri?) -> Unit
 ) {
@@ -568,9 +604,16 @@ fun PhotoUploadStep(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "Add a Photo",
+            text = "Add a Profile Photo",
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
+        )
+        
+        Text(
+            text = "This will be your main profile picture that clients see",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center
         )
 
         Box(
@@ -596,7 +639,354 @@ fun PhotoUploadStep(
                         modifier = Modifier.size(48.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Tap to upload")
+                }
+            }
+        }
+        
+        Text(
+            text = "Optional - You can skip this step",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// Data class to hold previous job item before upload
+data class PreviousJobItem(
+    val description: String = "",
+    val photoUris: List<Uri> = emptyList()
+)
+
+@Composable
+fun PreviousJobsStep(
+    previousJobs: List<PreviousJobItem>,
+    onPreviousJobsChange: (List<PreviousJobItem>) -> Unit
+) {
+    var showAddDialog by remember { mutableStateOf(false) }
+    
+    Column(
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Previous Work Portfolio",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold
+        )
+        
+        Text(
+            text = "Showcase your previous projects to help clients see your work quality",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+        )
+        
+        // List of previous jobs
+        if (previousJobs.isNotEmpty()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                previousJobs.forEachIndexed { index, job ->
+                    PreviousJobCard(
+                        job = job,
+                        onDelete = {
+                            onPreviousJobsChange(previousJobs.toMutableList().apply { removeAt(index) })
+                        }
+                    )
+                }
+            }
+        } else {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = AppIcons.Form.work,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No previous projects added yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+        
+        // Add button
+        Button(
+            onClick = { showAddDialog = true },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = previousJobs.size < 10 // Limit to 10 projects
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Add Previous Project")
+        }
+        
+        Text(
+            text = "Optional - You can skip this step or add up to 10 projects",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+    
+    // Add job dialog
+    if (showAddDialog) {
+        AddPreviousJobDialog(
+            onDismiss = { showAddDialog = false },
+            onAdd = { newJob ->
+                onPreviousJobsChange(previousJobs + newJob)
+                showAddDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+fun PreviousJobCard(
+    job: PreviousJobItem,
+    onDelete: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = job.description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 3
+                    )
+                    
+                    if (job.photoUris.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            job.photoUris.forEach { uri ->
+                                AsyncImage(
+                                    model = uri,
+                                    contentDescription = "Project photo",
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = ContentScale.Crop
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddPreviousJobDialog(
+    onDismiss: () -> Unit,
+    onAdd: (PreviousJobItem) -> Unit
+) {
+    var description by remember { mutableStateOf("") }
+    var selectedPhotoUris by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    
+    val photoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        // Take maximum 2 photos
+        selectedPhotoUris = (selectedPhotoUris + uris).take(2)
+    }
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Header
+            Text(
+                text = "Add Previous Project",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+            
+            Text(
+                text = "Share details about a project you've completed to showcase your work",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            
+            // Description field
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Project Description") },
+                placeholder = { Text("e.g., Kitchen renovation in Amsterdam - replaced cabinets, countertops, and installed new appliances") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 4,
+                maxLines = 6,
+                supportingText = {
+                    Text("${description.length}/500 characters")
+                }
+            )
+            
+            // Photos section
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Project Photos (Optional)",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                
+                Text(
+                    text = "Add up to 2 photos showing your work (${selectedPhotoUris.size}/2)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                // Photo grid
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    selectedPhotoUris.forEach { uri ->
+                        Box(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            AsyncImage(
+                                model = uri,
+                                contentDescription = "Project photo",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(120.dp)
+                                    .clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Crop
+                            )
+                            IconButton(
+                                onClick = {
+                                    selectedPhotoUris = selectedPhotoUris.filter { it != uri }
+                                },
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(4.dp)
+                                    .size(28.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.error.copy(alpha = 0.9f),
+                                        CircleShape
+                                    )
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Remove photo",
+                                    tint = MaterialTheme.colorScheme.onError,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    // Add photo button
+                    if (selectedPhotoUris.size < 2) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(120.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .clickable { photoLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.AddAPhoto,
+                                    contentDescription = "Add photo",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Text(
+                                    text = "Add Photo",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Action buttons
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                TextButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Cancel")
+                }
+                
+                Button(
+                    onClick = {
+                        if (description.isNotBlank()) {
+                            onAdd(PreviousJobItem(description.take(500), selectedPhotoUris))
+                        }
+                    },
+                    enabled = description.isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Add Project")
                 }
             }
         }

@@ -246,6 +246,22 @@ class AuthRepository @Inject constructor(
     } catch (e: Exception) {
         Result.failure(e)
     }
+    
+    /**
+     * Update user profile and return the updated user
+     */
+    suspend fun updateUserProfile(user: User): Result<User> = try {
+        val firebaseUser = currentUser ?: throw Exception("No user signed in")
+        
+        firestore.collection("users")
+            .document(firebaseUser.uid)
+            .set(user)
+            .await()
+
+        Result.success(user)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
 
     /**
      * Upload profile image to Firebase Storage
@@ -438,6 +454,20 @@ class AuthRepository @Inject constructor(
         firebaseUser.delete().await()
 
         Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    /**
+     * Check if an email is already registered
+     */
+    suspend fun checkEmailExists(email: String): Result<Boolean> = try {
+        val users = firestore.collection("users")
+            .whereEqualTo("email", email)
+            .get()
+            .await()
+        
+        Result.success(!users.isEmpty)
     } catch (e: Exception) {
         Result.failure(e)
     }

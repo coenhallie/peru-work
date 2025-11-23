@@ -80,6 +80,7 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-storage")
     implementation("com.google.firebase:firebase-appcheck-debug")
+    implementation("com.google.firebase:firebase-messaging")
     
     // Cloudinary
     implementation("com.cloudinary:cloudinary-android:3.1.2")
