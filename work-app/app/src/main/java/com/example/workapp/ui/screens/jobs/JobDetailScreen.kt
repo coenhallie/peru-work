@@ -255,14 +255,12 @@ fun JobDetailScreen(
     ) { padding ->
         if (job == null) {
             // Loading state
-            Box(
+            // Loading state
+            com.example.workapp.ui.components.SkeletonJobDetail(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+                    .padding(padding)
+            )
         } else {
             // Job details content
             JobDetailContent(

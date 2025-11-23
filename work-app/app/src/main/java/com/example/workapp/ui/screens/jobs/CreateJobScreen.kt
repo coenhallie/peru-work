@@ -66,7 +66,6 @@ fun CreateJobScreen(
     var jobDescription by remember { mutableStateOf("") }
     var jobCategory by remember { mutableStateOf("") }
     var jobLocation by remember { mutableStateOf("") }
-    var jobBudget by remember { mutableStateOf("") }
     var selectedImageUri by remember { mutableStateOf<String?>(null) }
 
     // Photo Picker Launcher
@@ -226,16 +225,7 @@ fun CreateJobScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Budget
-            OutlinedTextField(
-                value = jobBudget,
-                onValueChange = { jobBudget = it },
-                label = { Text("Budget (PEN)*") },
-                placeholder = { Text("e.g., 5000") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                shape = MaterialTheme.shapes.medium
-            )
+
 
             // Job Description
             OutlinedTextField(
@@ -260,7 +250,6 @@ fun CreateJobScreen(
                         description = jobDescription,
                         category = jobCategory,
                         location = jobLocation,
-                        budget = jobBudget,
                         imageUri = selectedImageUri
                     )
                 },
@@ -271,7 +260,6 @@ fun CreateJobScreen(
                          jobDescription.isNotBlank() &&
                          jobCategory.isNotBlank() &&
                          jobLocation.isNotBlank() &&
-                         jobBudget.isNotBlank() &&
                          createJobState !is CreateJobState.Loading &&
                          createJobState !is CreateJobState.Success
             ) {

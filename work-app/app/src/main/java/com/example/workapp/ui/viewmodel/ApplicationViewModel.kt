@@ -51,6 +51,9 @@ class ApplicationViewModel @Inject constructor(
     private val _applicationCount = MutableStateFlow<Int>(0)
     val applicationCount: StateFlow<Int> = _applicationCount.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     /**
      * Submit a new job application
      */
@@ -137,8 +140,14 @@ class ApplicationViewModel @Inject constructor(
      */
     fun loadApplicationsForJob(jobId: String) {
         viewModelScope.launch {
-            applicationRepository.getApplicationsForJob(jobId).collect { applications ->
-                _jobApplications.value = applications
+            _isLoading.value = true
+            try {
+                applicationRepository.getApplicationsForJob(jobId).collect { applications ->
+                    _jobApplications.value = applications
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
             }
         }
     }
@@ -148,8 +157,14 @@ class ApplicationViewModel @Inject constructor(
      */
     fun loadPendingApplicationsForJob(jobId: String) {
         viewModelScope.launch {
-            applicationRepository.getPendingApplicationsForJob(jobId).collect { applications ->
-                _jobApplications.value = applications
+            _isLoading.value = true
+            try {
+                applicationRepository.getPendingApplicationsForJob(jobId).collect { applications ->
+                    _jobApplications.value = applications
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _isLoading.value = false
             }
         }
     }
@@ -166,11 +181,19 @@ class ApplicationViewModel @Inject constructor(
      */
     fun loadMyApplications() {
         viewModelScope.launch {
+            _isLoading.value = true
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
-                applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
-                    _myApplications.value = applications
+                try {
+                    applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
+                        _myApplications.value = applications
+                        _isLoading.value = false
+                    }
+                } catch (e: Exception) {
+                    _isLoading.value = false
                 }
+            } else {
+                _isLoading.value = false
             }
         }
     }
@@ -180,18 +203,26 @@ class ApplicationViewModel @Inject constructor(
      */
     fun loadMyApplicationsWithJobs() {
         viewModelScope.launch {
+            _isLoading.value = true
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
-                applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
-                    // Fetch job details for each application
-                    val applicationsWithJobs = applications.mapNotNull { application ->
-                        val jobResult = jobRepository.getJobById(application.jobId)
-                        jobResult.getOrNull()?.let { job ->
-                            application to job
+                try {
+                    applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
+                        // Fetch job details for each application
+                        val applicationsWithJobs = applications.mapNotNull { application ->
+                            val jobResult = jobRepository.getJobById(application.jobId)
+                            jobResult.getOrNull()?.let { job ->
+                                application to job
+                            }
                         }
+                        _myApplicationsWithJobs.value = applicationsWithJobs
+                        _isLoading.value = false
                     }
-                    _myApplicationsWithJobs.value = applicationsWithJobs
+                } catch (e: Exception) {
+                    _isLoading.value = false
                 }
+            } else {
+                _isLoading.value = false
             }
         }
     }

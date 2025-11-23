@@ -74,6 +74,7 @@ fun MyApplicationsScreen(
     viewModel: ApplicationViewModel = hiltViewModel()
 ) {
     val applications by viewModel.myApplications.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val withdrawApplicationState by viewModel.withdrawApplicationState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -202,7 +203,18 @@ fun MyApplicationsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (applications.isEmpty()) {
+
+            if (isLoading) {
+                LazyColumn(
+                    modifier = modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(5) {
+                        com.example.workapp.ui.components.SkeletonApplicationCard()
+                    }
+                }
+            } else if (applications.isEmpty()) {
                 // Empty state
                 Box(
                     modifier = modifier.fillMaxSize(),

@@ -57,6 +57,7 @@ import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AcceptApplicationState
 import com.example.workapp.ui.viewmodel.ApplicationViewModel
 import com.example.workapp.ui.viewmodel.RejectApplicationState
+import com.example.workapp.ui.components.SkeletonApplicationReviewCard
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -73,6 +74,7 @@ fun ApplicationsListScreen(
     viewModel: ApplicationViewModel = hiltViewModel()
 ) {
     val applications by viewModel.jobApplications.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val acceptApplicationState by viewModel.acceptApplicationState.collectAsState()
     val rejectApplicationState by viewModel.rejectApplicationState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -227,7 +229,19 @@ fun ApplicationsListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (applications.isEmpty()) {
+        if (isLoading) {
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(3) {
+                    com.example.workapp.ui.components.SkeletonApplicationReviewCard()
+                }
+            }
+        } else if (applications.isEmpty()) {
             // Empty state
             Box(
                 modifier = modifier

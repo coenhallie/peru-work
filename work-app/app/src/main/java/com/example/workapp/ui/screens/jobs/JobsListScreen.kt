@@ -267,65 +267,79 @@ fun JobsListScreen(
                     onJobClick = onJobClick
                 )
             } else {
-                // Show jobs list for regular users or "My Jobs"
-                if (jobsList.isEmpty()) {
-                    // Empty state
-                    Column(
-                        modifier = modifier
-                            .fillMaxSize()
-                            .padding(24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                    Icon(
-                        imageVector = AppIcons.Content.work,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .size(IconSizes.large),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = if (showMyJobs) "No jobs posted yet" else "No jobs found",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        text = if (showMyJobs)
-                            "Create your first job listing"
-                        else if (isFiltering)
-                            "Try adjusting your location filters"
-                        else
-                            "Check back later for new opportunities",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                }
-                } else {
-                    // Jobs list
+                val isLoading by jobViewModel.isLoading.collectAsState()
+
+                if (isLoading) {
                     LazyColumn(
                         modifier = modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                    items(jobsList) { job ->
-                        // Only show edit/delete buttons if the current user created this job
-                        val isOwner = currentUserId != null && currentUserId == job.clientId
-                        
-                        JobCard(
-                            job = job,
-                            onClick = { onJobClick(job.id) },
-                            onEdit = if (isOwner) { { onEditJob(job.id) } } else null,
-                            onDelete = if (isOwner) {
-                                {
-                                    jobToDelete = job.id
-                                    showDeleteDialog = true
-                                }
-                            } else null,
-                            onViewApplications = if (isOwner && job.applicationCount > 0) {
-                                { onViewApplications(job.id) }
-                            } else null
-                        )
+                        items(5) {
+                            com.example.workapp.ui.components.SkeletonJobCard()
+                        }
+                    }
+                } else {
+                    // Show jobs list for regular users or "My Jobs"
+                    if (jobsList.isEmpty()) {
+                        // Empty state
+                        Column(
+                            modifier = modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Content.work,
+                                contentDescription = null,
+                                modifier = Modifier
+                                    .padding(bottom = 16.dp)
+                                    .size(IconSizes.large),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = if (showMyJobs) "No jobs posted yet" else "No jobs found",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Text(
+                                text = if (showMyJobs)
+                                    "Create your first job listing"
+                                else if (isFiltering)
+                                    "Try adjusting your location filters"
+                                else
+                                    "Check back later for new opportunities",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        }
+                    } else {
+                        // Jobs list
+                        LazyColumn(
+                            modifier = modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(jobsList) { job ->
+                                // Only show edit/delete buttons if the current user created this job
+                                val isOwner = currentUserId != null && currentUserId == job.clientId
+                                
+                                JobCard(
+                                    job = job,
+                                    onClick = { onJobClick(job.id) },
+                                    onEdit = if (isOwner) { { onEditJob(job.id) } } else null,
+                                    onDelete = if (isOwner) {
+                                        {
+                                            jobToDelete = job.id
+                                            showDeleteDialog = true
+                                        }
+                                    } else null,
+                                    onViewApplications = if (isOwner && job.applicationCount > 0) {
+                                        { onViewApplications(job.id) }
+                                    } else null
+                                )
+                            }
                         }
                     }
                 }

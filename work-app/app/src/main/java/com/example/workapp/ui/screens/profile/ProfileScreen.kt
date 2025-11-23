@@ -56,6 +56,7 @@ import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
+import com.example.workapp.ui.components.SkeletonProfileScreen
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,182 +105,191 @@ fun ProfileScreen(
             )
         },
         containerColor = MaterialTheme.colorScheme.background
+
     ) { padding ->
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            // Profile Header Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.extraLarge,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                ),
-                elevation = CardDefaults.cardElevation(
-                    defaultElevation = 0.dp
-                )
+        if (currentUser == null) {
+            com.example.workapp.ui.components.SkeletonProfileScreen(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            )
+        } else {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Column(
+                // Profile Header Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraLarge,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    ),
+                    elevation = CardDefaults.cardElevation(
+                        defaultElevation = 0.dp
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Profile Image
+                        AsyncImage(
+                            model = currentUser?.profileImageUrl ?: "https://via.placeholder.com/150",
+                            contentDescription = "Profile picture",
+                            modifier = Modifier
+                                .size(120.dp)
+                                .clip(CircleShape),
+                            contentScale = ContentScale.Crop
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Name
+                        Text(
+                            text = currentUser?.name ?: "User Name",
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+
+                        currentUser?.craft?.let { craft ->
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = craft,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Edit Profile Button
+                        FilledTonalButton(
+                            onClick = onNavigateToEditProfile,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Actions.edit,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSizes.small)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Edit Profile")
+                        }
+                    }
+                }
+
+                // Contact Information Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        Text(
+                            text = "Contact Information",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+
+                        HorizontalDivider()
+
+                        ProfileInfoItem(
+                            icon = AppIcons.Content.email,
+                            label = "Email",
+                            value = currentUser?.email ?: "Not provided"
+                        )
+
+                        ProfileInfoItem(
+                            icon = AppIcons.Content.phone,
+                            label = "Phone",
+                            value = currentUser?.phone ?: "Not provided"
+                        )
+
+                        ProfileInfoItem(
+                            icon = AppIcons.Content.language,
+                            label = "Location",
+                            value = currentUser?.location ?: "Not provided"
+                        )
+                    }
+                }
+
+                // Account Actions
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Account",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.SemiBold
+                            ),
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+
+                        OutlinedButton(
+                            onClick = onSignOut,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Actions.logout,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSizes.small)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Sign Out")
+                        }
+                        
+                        OutlinedButton(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.error
+                            )
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Actions.delete,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSizes.small)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Delete Account")
+                        }
+                    }
+                }
+
+                // App Version
+                Text(
+                    text = "Version 1.0.0",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Profile Image
-                    AsyncImage(
-                        model = currentUser?.profileImageUrl ?: "https://via.placeholder.com/150",
-                        contentDescription = "Profile picture",
-                        modifier = Modifier
-                            .size(120.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Name
-                    Text(
-                        text = currentUser?.name ?: "User Name",
-                        style = MaterialTheme.typography.headlineSmall.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-
-                    currentUser?.craft?.let { craft ->
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = craft,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Edit Profile Button
-                    FilledTonalButton(
-                        onClick = onNavigateToEditProfile,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Actions.edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSizes.small)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Edit Profile")
-                    }
-                }
-            }
-
-            // Contact Information Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        .padding(vertical = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-            ) {
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    Text(
-                        text = "Contact Information",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
 
-                    HorizontalDivider()
-
-                    ProfileInfoItem(
-                        icon = AppIcons.Content.email,
-                        label = "Email",
-                        value = currentUser?.email ?: "Not provided"
-                    )
-
-                    ProfileInfoItem(
-                        icon = AppIcons.Content.phone,
-                        label = "Phone",
-                        value = currentUser?.phone ?: "Not provided"
-                    )
-
-                    ProfileInfoItem(
-                        icon = AppIcons.Content.language,
-                        label = "Location",
-                        value = currentUser?.location ?: "Not provided"
-                    )
-                }
+                Spacer(modifier = Modifier.height(80.dp))
             }
-
-            // Account Actions
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.large,
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Account",
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
-                        modifier = Modifier.padding(bottom = 4.dp)
-                    )
-
-                    OutlinedButton(
-                        onClick = onSignOut,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Actions.logout,
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSizes.small)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign Out")
-                    }
-                    
-                    OutlinedButton(
-                        onClick = { showDeleteDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
-                        )
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Actions.delete,
-                            contentDescription = null,
-                            modifier = Modifier.size(IconSizes.small)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Delete Account")
-                    }
-                }
-            }
-
-            // App Version
-            Text(
-                text = "Version 1.0.0",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(80.dp))
         }
     }
     

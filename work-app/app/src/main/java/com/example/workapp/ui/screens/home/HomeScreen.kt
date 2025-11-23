@@ -105,6 +105,7 @@ fun HomeScreen(
     
     // Jobs view states (for craftsmen)
     val openJobs by jobViewModel.openJobs.collectAsState()
+    val isJobsLoading by jobViewModel.isLoading.collectAsState()
 
     Scaffold(
         topBar = {
@@ -137,6 +138,7 @@ fun HomeScreen(
             // Show recent jobs for craftsmen
             CraftsmenHomeContent(
                 jobs = openJobs,
+                isLoading = isJobsLoading,
                 padding = padding,
                 onJobClick = onJobClick
             )
@@ -258,11 +260,13 @@ private fun RegularUserHomeContent(
         ) {
             when (uiState) {
                 is CraftsmenUiState.Loading -> {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
+                    LazyColumn(
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        CircularProgressIndicator()
+                        items(5) {
+                            com.example.workapp.ui.components.SkeletonCraftsmanCard()
+                        }
                     }
                 }
                 is CraftsmenUiState.Empty -> {
@@ -530,6 +534,7 @@ private fun CategoryFilterItem(
 @Composable
 private fun CraftsmenHomeContent(
     jobs: List<Job>,
+    isLoading: Boolean,
     padding: PaddingValues,
     onJobClick: (String) -> Unit
 ) {
@@ -560,7 +565,17 @@ private fun CraftsmenHomeContent(
             .fillMaxSize()
             .padding(padding)
     ) {
-        if (jobs.isEmpty()) {
+        if (isLoading) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp, top = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(5) {
+                    com.example.workapp.ui.components.SkeletonJobCard()
+                }
+            }
+        } else if (jobs.isEmpty()) {
             // Empty state
             Box(
                 modifier = Modifier.fillMaxSize(),

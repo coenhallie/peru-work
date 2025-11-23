@@ -60,7 +60,6 @@ fun EditJobScreen(
     var jobDescription by remember { mutableStateOf("") }
     var jobCategory by remember { mutableStateOf("") }
     var jobLocation by remember { mutableStateOf("") }
-    var jobBudget by remember { mutableStateOf("") }
     var isInitialized by remember { mutableStateOf(false) }
 
     // Load the job when screen opens
@@ -76,7 +75,6 @@ fun EditJobScreen(
                 jobDescription = job.description
                 jobCategory = job.category
                 jobLocation = job.location
-                jobBudget = job.budget?.toString() ?: ""
                 isInitialized = true
             }
         }
@@ -193,16 +191,7 @@ fun EditJobScreen(
                     shape = MaterialTheme.shapes.medium
                 )
 
-                // Budget
-                OutlinedTextField(
-                    value = jobBudget,
-                    onValueChange = { jobBudget = it },
-                    label = { Text("Budget (PEN)*") },
-                    placeholder = { Text("e.g., 5000") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.medium
-                )
+
 
                 // Job Description
                 OutlinedTextField(
@@ -227,8 +216,7 @@ fun EditJobScreen(
                             title = jobTitle,
                             description = jobDescription,
                             category = jobCategory,
-                            location = jobLocation,
-                            budget = jobBudget
+                            location = jobLocation
                         )
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -238,7 +226,6 @@ fun EditJobScreen(
                              jobDescription.isNotBlank() &&
                              jobCategory.isNotBlank() &&
                              jobLocation.isNotBlank() &&
-                             jobBudget.isNotBlank() &&
                              updateJobState !is UpdateJobState.Loading
                 ) {
                     if (updateJobState is UpdateJobState.Loading) {

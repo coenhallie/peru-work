@@ -106,15 +106,12 @@ fun CraftsmanDetailScreen(
     ) { padding ->
         when {
             isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
+
+                com.example.workapp.ui.components.SkeletonCraftsmanDetail(
+                    modifier = Modifier.padding(padding)
+                )
             }
+
             error != null -> {
                 Box(
                     modifier = Modifier

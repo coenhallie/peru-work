@@ -57,6 +57,9 @@ class JobViewModel @Inject constructor(
     private val _isFiltering = MutableStateFlow(false)
     val isFiltering: StateFlow<Boolean> = _isFiltering.asStateFlow()
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+
     // Track active job subscriptions to cancel them on sign out
     private var openJobsSubscription: CoroutineJob? = null
     private var myJobsSubscription: CoroutineJob? = null
@@ -119,7 +122,6 @@ class JobViewModel @Inject constructor(
         description: String,
         category: String,
         location: String,
-        budget: String,
         imageUri: String? = null
     ) {
         viewModelScope.launch {
@@ -140,11 +142,7 @@ class JobViewModel @Inject constructor(
                     return@launch
                 }
 
-                val budgetValue = budget.toDoubleOrNull()
-                if (budgetValue == null || budgetValue <= 0) {
-                    _createJobState.value = CreateJobState.Error("Invalid budget amount")
-                    return@launch
-                }
+
 
                 // Upload image if selected
                 var imageUrl: String? = null
@@ -165,7 +163,7 @@ class JobViewModel @Inject constructor(
                     description = description,
                     category = category,
                     location = location,
-                    budget = budgetValue,
+                    budget = null,
                     clientId = currentUser.uid,
                     clientName = userProfile.name,
                     clientRole = userProfile.roleString,
@@ -210,12 +208,14 @@ class JobViewModel @Inject constructor(
         openJobsSubscription?.cancel()
         
         openJobsSubscription = viewModelScope.launch {
+            _isLoading.value = true
             jobRepository.getOpenJobs().collect { jobs ->
                 _openJobs.value = jobs
                 // Initially, filtered jobs are the same as open jobs
                 if (!_isFiltering.value) {
                     _filteredJobs.value = jobs
                 }
+                _isLoading.value = false
             }
         }
     }
@@ -282,15 +282,18 @@ class JobViewModel @Inject constructor(
         myJobsSubscription?.cancel()
         
         myJobsSubscription = viewModelScope.launch {
+            _isLoading.value = true
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
                 // Load jobs created by this client
                 jobRepository.getJobsByClient(currentUser.uid).collect { jobs ->
                     _myJobs.value = jobs
                     _totalApplicationCount.value = jobs.sumOf { it.applicationCount }
+                    _isLoading.value = false
                 }
             } else {
                 _myJobs.value = emptyList()
+                _isLoading.value = false
             }
         }
     }
@@ -355,8 +358,7 @@ class JobViewModel @Inject constructor(
         title: String,
         description: String,
         category: String,
-        location: String,
-        budget: String
+        location: String
     ) {
         viewModelScope.launch {
             _updateJobState.value = UpdateJobState.Loading
@@ -368,11 +370,7 @@ class JobViewModel @Inject constructor(
                     return@launch
                 }
 
-                val budgetValue = budget.toDoubleOrNull()
-                if (budgetValue == null || budgetValue <= 0) {
-                    _updateJobState.value = UpdateJobState.Error("Invalid budget amount")
-                    return@launch
-                }
+
 
                 // Get the current job to preserve fields we're not updating
                 val currentJobResult = jobRepository.getJobById(jobId)
@@ -389,7 +387,7 @@ class JobViewModel @Inject constructor(
                             description = description,
                             category = category,
                             location = location,
-                            budget = budgetValue,
+                            budget = null,
                             updatedAt = System.currentTimeMillis()
                         )
 
