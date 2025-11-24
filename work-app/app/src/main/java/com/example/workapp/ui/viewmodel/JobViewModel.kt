@@ -63,7 +63,7 @@ class JobViewModel @Inject constructor(
     // Track active job subscriptions to cancel them on sign out
     private var openJobsSubscription: CoroutineJob? = null
     private var myJobsSubscription: CoroutineJob? = null
-    private var craftsmanJobsSubscription: CoroutineJob? = null
+    private var professionalJobsSubscription: CoroutineJob? = null
     private var currentUserId: String? = null
 
     init {
@@ -100,7 +100,7 @@ class JobViewModel @Inject constructor(
         // Cancel active subscriptions
         openJobsSubscription?.cancel()
         myJobsSubscription?.cancel()
-        craftsmanJobsSubscription?.cancel()
+        professionalJobsSubscription?.cancel()
         
         // Clear data
         _openJobs.value = emptyList()
@@ -122,7 +122,7 @@ class JobViewModel @Inject constructor(
         description: String,
         category: String,
         location: String,
-        imageUri: String? = null
+        imageUris: List<String> = emptyList()
     ) {
         viewModelScope.launch {
             if (_createJobState.value is CreateJobState.Loading || _createJobState.value is CreateJobState.Success) return@launch
@@ -142,17 +142,19 @@ class JobViewModel @Inject constructor(
                     return@launch
                 }
 
-
-
-                // Upload image if selected
-                var imageUrl: String? = null
-                if (imageUri != null) {
-                    val uploadResult = jobRepository.uploadJobImage(Uri.parse(imageUri))
+                // Upload images if selected
+                val uploadedImageUrls = mutableListOf<String>()
+                
+                for (uriString in imageUris) {
+                    val uploadResult = jobRepository.uploadJobImage(Uri.parse(uriString))
                     if (uploadResult.isSuccess) {
-                        imageUrl = uploadResult.getOrNull()
+                        uploadResult.getOrNull()?.let { uploadedImageUrls.add(it) }
                     } else {
+                        // If one fails, we could either fail all or continue with partial.
+                        // For now, let's log/ignore and continue, or we could fail.
+                        // Let's fail to ensure data integrity for the user's intent.
                         _createJobState.value = CreateJobState.Error(
-                            uploadResult.exceptionOrNull()?.message ?: "Failed to upload image"
+                            uploadResult.exceptionOrNull()?.message ?: "Failed to upload one of the images"
                         )
                         return@launch
                     }
@@ -170,7 +172,8 @@ class JobViewModel @Inject constructor(
                     status = JobStatus.OPEN,
                     createdAt = System.currentTimeMillis(),
                     updatedAt = System.currentTimeMillis(),
-                    imageUrl = imageUrl
+                    images = if (uploadedImageUrls.isNotEmpty()) uploadedImageUrls else null,
+                    imageUrl = uploadedImageUrls.firstOrNull() // Main display image is the first one
                 )
 
                 val result = jobRepository.createJob(job)
@@ -288,7 +291,7 @@ class JobViewModel @Inject constructor(
                 // Load jobs created by this client
                 jobRepository.getJobsByClient(currentUser.uid).collect { jobs ->
                     _myJobs.value = jobs
-                    _totalApplicationCount.value = jobs.sumOf { it.applicationCount }
+                    _totalApplicationCount.value = jobs.filter { it.status == JobStatus.OPEN }.sumOf { it.applicationCount }
                     _isLoading.value = false
                 }
             } else {
@@ -299,16 +302,16 @@ class JobViewModel @Inject constructor(
     }
 
     /**
-     * Load jobs assigned to craftsman
+     * Load jobs assigned to professional
      */
-    fun loadCraftsmanJobs() {
+    fun loadProfessionalJobs() {
         // Cancel existing subscriptions
-        craftsmanJobsSubscription?.cancel()
+        professionalJobsSubscription?.cancel()
         
-        craftsmanJobsSubscription = viewModelScope.launch {
+        professionalJobsSubscription = viewModelScope.launch {
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
-                jobRepository.getJobsByCraftsman(currentUser.uid).collect { jobs ->
+                jobRepository.getJobsByProfessional(currentUser.uid).collect { jobs ->
                     _myJobs.value = jobs
                 }
             } else {
@@ -324,10 +327,10 @@ class JobViewModel @Inject constructor(
         viewModelScope.launch {
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
-                jobRepository.assignCraftsman(
+                jobRepository.assignProfessional(
                     jobId = jobId,
-                    craftsmanId = currentUser.uid,
-                    craftsmanName = currentUser.displayName ?: "Unknown"
+                    professionalId = currentUser.uid,
+                    professionalName = currentUser.displayName ?: "Unknown"
                 )
             }
         }

@@ -46,11 +46,11 @@ sealed class BottomNavDestination(
     )
 
     data class Listings(
-        val isCraftsman: Boolean = false
+        val isProfessional: Boolean = false
     ) : BottomNavDestination(
         route = "my_jobs",
-        label = if (isCraftsman) "Jobs" else "My Jobs",
-        contentDescription = if (isCraftsman) "Browse available jobs" else "View and manage your job listings"
+        label = if (isProfessional) "Jobs" else "My Jobs",
+        contentDescription = if (isProfessional) "Browse available jobs" else "View and manage your job listings"
     )
 
     object Profile : BottomNavDestination(
@@ -95,19 +95,19 @@ fun BottomNavigationBar(
     applicationCount: Int = 0
 ) {
     // Create destinations based on user role
-    // IMPORTANT: Craftsmen should NOT see the Create button
-    // Only clients (non-craftsmen) can create job listings
-    val isCraftsman = currentUser?.isCraftsman() == true
+    // IMPORTANT: Professionals should NOT see the Create button
+    // Only clients (non-professionals) can create job listings
+    val isProfessional = currentUser?.isProfessional() == true
     
     // Explicitly check roleString as additional safety measure
-    val roleIsCraftsman = currentUser?.roleString == "CRAFTSMAN"
-    val shouldShowCreateButton = currentUser != null && !isCraftsman && !roleIsCraftsman
+    val roleIsProfessional = currentUser?.roleString == "PROFESSIONAL" || currentUser?.roleString == "CRAFTSMAN"
+    val shouldShowCreateButton = currentUser != null && !isProfessional && !roleIsProfessional
     
-    val destinations = if (isCraftsman || roleIsCraftsman) {
-        // Craftsman navigation: Home (Search), Jobs (My Applications), Chat, Profile
+    val destinations = if (isProfessional || roleIsProfessional) {
+        // Professional navigation: Home (Search), Jobs (My Applications), Chat, Profile
         listOf(
             BottomNavDestination.Home,
-            BottomNavDestination.Listings(isCraftsman = true),
+            BottomNavDestination.Listings(isProfessional = true),
             BottomNavDestination.Chat,
             BottomNavDestination.Profile
         )
@@ -116,7 +116,7 @@ fun BottomNavigationBar(
         listOf(
             BottomNavDestination.Home,
             BottomNavDestination.CreateJob,
-            BottomNavDestination.Listings(isCraftsman = false),
+            BottomNavDestination.Listings(isProfessional = false),
             BottomNavDestination.Chat,
             BottomNavDestination.Profile
         )
@@ -161,7 +161,7 @@ fun BottomNavigationBar(
                                         modifier = Modifier.size(IconSizes.medium)
                                     )
                                 }
-                            } else if (destination is BottomNavDestination.Listings && !destination.isCraftsman && applicationCount > 0) {
+                            } else if (destination is BottomNavDestination.Listings && !destination.isProfessional && applicationCount > 0) {
                                 BadgedBox(
                                     badge = {
                                         Badge {

@@ -58,6 +58,7 @@ import com.example.workapp.data.model.ApplicationStatus
 import com.example.workapp.ui.components.JobImage
 import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobApplication
+import com.example.workapp.data.model.JobStatus
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.ApplicationViewModel
@@ -72,7 +73,7 @@ import kotlinx.coroutines.launch
 /**
  * Screen displaying jobs based on user role:
  * - Regular users: Jobs they posted
- * - Craftsmen: Jobs they applied to with status
+ * - Professionals: Jobs they applied to with status
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +86,7 @@ fun JobsListScreen(
     onViewApplications: (String) -> Unit = {},
     currentUserId: String? = null,
     showMyJobs: Boolean = false,
-    isCraftsman: Boolean = false
+    isProfessional: Boolean = false
 ) {
     val openJobs by jobViewModel.openJobs.collectAsState()
     val filteredJobs by jobViewModel.filteredJobs.collectAsState()
@@ -102,9 +103,9 @@ fun JobsListScreen(
     val scope = rememberCoroutineScope()
     val pullToRefreshState = rememberPullToRefreshState()
     
-    // Load applications if craftsman
-    LaunchedEffect(isCraftsman) {
-        if (isCraftsman) {
+    // Load applications if professional
+    LaunchedEffect(isProfessional) {
+        if (isProfessional) {
             applicationViewModel.loadMyApplications()
         }
     }
@@ -152,7 +153,7 @@ fun JobsListScreen(
     }
 
     // Determine content mode
-    val showApplications = isCraftsman && !showMyJobs
+    val showApplications = isProfessional && !showMyJobs
     val jobsList = if (showMyJobs) myJobs else if (isFiltering) filteredJobs else openJobs
 
     Scaffold(
@@ -239,7 +240,7 @@ fun JobsListScreen(
                 scope.launch {
                     isRefreshing = true
                     jobViewModel.refresh()
-                    if (isCraftsman && !showMyJobs) {
+                    if (isProfessional && !showMyJobs) {
                         applicationViewModel.refresh()
                     }
                     delay(500)
@@ -261,30 +262,34 @@ fun JobsListScreen(
                 .padding(padding)
         ) {
             if (showApplications) {
-                // Show applications for craftsmen
-                CraftsmanApplicationsList(
+                // Show applications for professionals
+                ProfessionalApplicationsList(
                     applications = myApplications,
                     onJobClick = onJobClick
                 )
             } else {
                 val isLoading by jobViewModel.isLoading.collectAsState()
 
-                if (isLoading) {
-                    LazyColumn(
-                        modifier = modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(5) {
-                            com.example.workapp.ui.components.SkeletonJobCard()
+                com.example.workapp.ui.components.FadeInLoadingContent(
+                    isLoading = isLoading,
+                    modifier = modifier.fillMaxSize(),
+                    skeletonContent = {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(5) {
+                                com.example.workapp.ui.components.SkeletonJobCard()
+                            }
                         }
                     }
-                } else {
+                ) {
                     // Show jobs list for regular users or "My Jobs"
                     if (jobsList.isEmpty()) {
                         // Empty state
                         Column(
-                            modifier = modifier
+                            modifier = Modifier
                                 .fillMaxSize()
                                 .padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -317,7 +322,7 @@ fun JobsListScreen(
                     } else {
                         // Jobs list
                         LazyColumn(
-                            modifier = modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize(),
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
@@ -349,11 +354,11 @@ fun JobsListScreen(
 }
 
 /**
- * List of applications for craftsmen
+ * List of applications for professionals
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CraftsmanApplicationsList(
+private fun ProfessionalApplicationsList(
     applications: List<JobApplication>,
     onJobClick: (String) -> Unit
 ) {
@@ -413,9 +418,9 @@ private fun ApplicationJobCard(
     onClick: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -581,9 +586,9 @@ private fun JobCard(
     onViewApplications: (() -> Unit)? = null
 ) {
     Card(
+        onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -607,7 +612,7 @@ private fun JobCard(
                 )
                 
                 // Application Badge
-                if (job.applicationCount > 0) {
+                if (job.applicationCount > 0 && job.status == JobStatus.OPEN) {
                     Surface(
                         color = MaterialTheme.colorScheme.error,
                         shape = MaterialTheme.shapes.extraSmall,
@@ -751,7 +756,7 @@ private fun JobCard(
                     )
                 }
 
-                // Review Applications Button
+                // Review Applications Button or Status Indicator
                 if (onViewApplications != null && job.applicationCount > 0) {
                     Spacer(modifier = Modifier.height(12.dp))
                     androidx.compose.material3.HorizontalDivider(
@@ -759,28 +764,54 @@ private fun JobCard(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onViewApplications)
-                            .padding(vertical = 4.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = AppIcons.Content.person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(IconSizes.small)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Review ${job.applicationCount} Application${if (job.applicationCount > 1) "s" else ""}",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.primary
-                        )
+                    if (job.status == JobStatus.OPEN) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = onViewApplications)
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Content.person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(IconSizes.small)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Review ${job.applicationCount} Application${if (job.applicationCount > 1) "s" else ""}",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    } else {
+                        // Job has a selected candidate
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Actions.check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(IconSizes.small)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Candidate Selected",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
                     }
                 }
             }

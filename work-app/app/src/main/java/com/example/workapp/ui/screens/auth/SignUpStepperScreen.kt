@@ -136,10 +136,10 @@ fun SignUpStepperScreen(
         1 -> name.isNotBlank() && email.isNotBlank() && (isGoogleSignIn || password.isNotBlank())
         2 -> phone.isNotBlank()
         3 -> location.isNotBlank()
-        4 -> if (selectedRole == UserRole.CRAFTSMAN) craft.isNotBlank() && bio.isNotBlank() else true
+        4 -> if (selectedRole == UserRole.PROFESSIONAL) craft.isNotBlank() && bio.isNotBlank() else true
         5 -> true // Previous jobs are optional
         6 -> true // Profile photo is optional
-        7 -> if (selectedRole == UserRole.CRAFTSMAN) availability.isNotBlank() else true
+        7 -> if (selectedRole == UserRole.PROFESSIONAL) availability.isNotBlank() else true
         8 -> true // Distance has default
         else -> false
     }
@@ -245,8 +245,8 @@ fun SignUpStepperScreen(
                             location = location,
                             onLocationChange = { location = it }
                         )
-                        4 -> if (selectedRole == UserRole.CRAFTSMAN) {
-                            CraftsmanDetailsStep(
+                        4 -> if (selectedRole == UserRole.PROFESSIONAL) {
+                            ProfessionalDetailsStep(
                                 craft = craft,
                                 onCraftChange = { craft = it },
                                 bio = bio,
@@ -256,7 +256,7 @@ fun SignUpStepperScreen(
                             // Skip for client - go to profile photo
                             ProfilePhotoUploadStep(imageUri, { imageUri = it })
                         }
-                        5 -> if (selectedRole == UserRole.CRAFTSMAN) {
+                        5 -> if (selectedRole == UserRole.PROFESSIONAL) {
                             PreviousJobsStep(
                                 previousJobs = previousJobsList,
                                 onPreviousJobsChange = { previousJobsList = it }
@@ -265,7 +265,7 @@ fun SignUpStepperScreen(
                             // End for client (should not reach here via logic but for safety)
                             Text("Ready to finish!")
                         }
-                        6 -> if (selectedRole == UserRole.CRAFTSMAN) {
+                        6 -> if (selectedRole == UserRole.PROFESSIONAL) {
                             ProfilePhotoUploadStep(imageUri, { imageUri = it })
                         } else {
                             Text("Ready to finish!")
@@ -308,7 +308,7 @@ fun SignUpStepperScreen(
                             currentStep++
                         } else {
                             // Submit - convert previousJobsList to actual data
-                            val previousJobs = if (selectedRole == UserRole.CRAFTSMAN && previousJobsList.isNotEmpty()) {
+                            val previousJobs = if (selectedRole == UserRole.PROFESSIONAL && previousJobsList.isNotEmpty()) {
                                 previousJobsList
                             } else {
                                 null
@@ -321,9 +321,9 @@ fun SignUpStepperScreen(
                                     phone = phone.trim(),
                                     location = location.trim(),
                                     role = selectedRole,
-                                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
-                                    workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
+                                    craft = if (selectedRole == UserRole.PROFESSIONAL) craft.trim() else null,
+                                    bio = if (selectedRole == UserRole.PROFESSIONAL) bio.trim() else null,
+                                    workDistance = if (selectedRole == UserRole.PROFESSIONAL) workDistance.roundToInt() else null,
                                     imageUri = imageUri,
                                     previousJobs = previousJobs
                                 )
@@ -335,9 +335,9 @@ fun SignUpStepperScreen(
                                     phone = phone.trim(),
                                     location = location.trim(),
                                     role = selectedRole,
-                                    craft = if (selectedRole == UserRole.CRAFTSMAN) craft.trim() else null,
-                                    bio = if (selectedRole == UserRole.CRAFTSMAN) bio.trim() else null,
-                                    workDistance = if (selectedRole == UserRole.CRAFTSMAN) workDistance.roundToInt() else null,
+                                    craft = if (selectedRole == UserRole.PROFESSIONAL) craft.trim() else null,
+                                    bio = if (selectedRole == UserRole.PROFESSIONAL) bio.trim() else null,
+                                    workDistance = if (selectedRole == UserRole.PROFESSIONAL) workDistance.roundToInt() else null,
                                     imageUri = imageUri,
                                     previousJobs = previousJobs
                                 )
@@ -395,9 +395,9 @@ fun RoleSelectionStep(
                 modifier = Modifier.weight(1f)
             )
             RoleCard(
-                role = UserRole.CRAFTSMAN,
-                isSelected = selectedRole == UserRole.CRAFTSMAN,
-                onClick = { onRoleSelected(UserRole.CRAFTSMAN) },
+                role = UserRole.PROFESSIONAL,
+                isSelected = selectedRole == UserRole.PROFESSIONAL,
+                onClick = { onRoleSelected(UserRole.PROFESSIONAL) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -434,7 +434,7 @@ fun RoleCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (role == UserRole.CLIENT) "Client" else "Craftsman",
+                text = if (role == UserRole.CLIENT) "Client" else "Professional",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -556,7 +556,7 @@ fun LocationStep(
 }
 
 @Composable
-fun CraftsmanDetailsStep(
+fun ProfessionalDetailsStep(
     craft: String,
     onCraftChange: (String) -> Unit,
     bio: String,

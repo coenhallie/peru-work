@@ -1,6 +1,7 @@
 package com.example.workapp.data.model
 
 import com.google.firebase.firestore.PropertyName
+import com.google.firebase.firestore.Exclude
 
 /**
  * Job Application data model representing a craftsman's application to a job
@@ -17,7 +18,15 @@ data class JobApplication(
     val clientId: String = "",
     val clientName: String = "",
     
-    // Craftsman info
+    // Professional info
+    val professionalId: String = "",
+    val professionalName: String = "",
+    val professionalProfileImage: String? = null,
+    val professionalRating: Double? = null,
+    val professionalExperience: Int? = null,
+    val professionalProfession: String? = null,
+    
+    // Legacy fields
     val craftsmanId: String = "",
     val craftsmanName: String = "",
     val craftsmanProfileImage: String? = null,
@@ -49,6 +58,31 @@ data class JobApplication(
             ApplicationStatus.PENDING
         }
     
+    // Helpers for backward compatibility
+    @get:Exclude
+    val applicantId: String
+        get() = if (professionalId.isNotEmpty()) professionalId else craftsmanId
+        
+    @get:Exclude
+    val applicantName: String
+        get() = if (professionalName.isNotEmpty()) professionalName else craftsmanName
+
+    @get:Exclude
+    val applicantProfileImage: String?
+        get() = professionalProfileImage ?: craftsmanProfileImage
+
+    @get:Exclude
+    val applicantRating: Double?
+        get() = professionalRating ?: craftsmanRating
+
+    @get:Exclude
+    val applicantExperience: Int?
+        get() = professionalExperience ?: craftsmanExperience
+
+    @get:Exclude
+    val applicantProfession: String?
+        get() = professionalProfession ?: craftsmanCraft
+
     fun toMap(): Map<String, Any?> = buildMap {
         put("_id", id)
         put("jobId", jobId)
@@ -56,12 +90,14 @@ data class JobApplication(
         put("jobBudget", jobBudget)
         put("clientId", clientId)
         put("clientName", clientName)
-        put("craftsmanId", craftsmanId)
-        put("craftsmanName", craftsmanName)
-        put("craftsmanProfileImage", craftsmanProfileImage)
-        put("craftsmanRating", craftsmanRating)
-        put("craftsmanExperience", craftsmanExperience)
-        put("craftsmanCraft", craftsmanCraft)
+        
+        put("professionalId", applicantId)
+        put("professionalName", applicantName)
+        put("professionalProfileImage", applicantProfileImage)
+        put("professionalRating", applicantRating)
+        put("professionalExperience", applicantExperience)
+        put("professionalProfession", applicantProfession)
+        
         put("proposedPrice", proposedPrice)
         put("estimatedDuration", estimatedDuration)
         put("coverLetter", coverLetter)
@@ -82,5 +118,5 @@ enum class ApplicationStatus {
     PENDING,    // Waiting for client decision
     ACCEPTED,   // Client accepted this application - job is assigned
     REJECTED,   // Client chose someone else
-    WITHDRAWN   // Craftsman cancelled their application
+    WITHDRAWN   // Professional cancelled their application
 }

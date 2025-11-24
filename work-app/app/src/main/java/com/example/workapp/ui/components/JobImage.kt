@@ -33,8 +33,6 @@ fun JobImage(
     val displayImage = if (!imageUrl.isNullOrEmpty()) imageUrl else getMockImageForCategory(category)
     
     // Create a placeholder painter using the work icon
-    val placeholderPainter = rememberVectorPainter(AppIcons.Content.work)
-
     Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -43,10 +41,7 @@ fun JobImage(
                 .build(),
             contentDescription = "Job Image",
             modifier = Modifier.fillMaxSize(),
-            contentScale = contentScale,
-            error = placeholderPainter,
-            placeholder = placeholderPainter,
-            fallback = placeholderPainter
+            contentScale = contentScale
         )
     }
 }

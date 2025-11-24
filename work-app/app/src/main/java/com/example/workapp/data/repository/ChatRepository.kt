@@ -20,34 +20,18 @@ class ChatRepository @Inject constructor(
 ) {
 
     /**
-     * Get all chat rooms for a specific user (either as client or craftsman)
+     * Get all chat rooms for a specific user (either as client or professional)
      */
     fun getChatRoomsForUser(userId: String): Flow<List<ChatRoom>> = callbackFlow {
-        // We need to query for rooms where user is client OR user is craftsman
-        // Firestore doesn't support logical OR in queries easily, so we might need two queries
-        // However, for simplicity and since we can't do complex ORs, we'll rely on a composite index or separate listeners
-        // A common pattern is to have an array of "participants" in the document and use array-contains
-        // But given our schema has clientId and craftsmanId, we'll try to set up two listeners and merge,
-        // or better yet, just use two separate queries if the user role is known.
-        // Since we don't always know the role context here, let's try a simpler approach:
-        // We'll assume the UI passes the role or we query both fields.
-        
-        // Actually, for this app, a user is usually one or the other in a specific context, 
-        // but let's just listen to both fields to be safe and merge.
-        // LIMITATION: This might require two listeners.
-        
-        // Optimization: Let's just use the 'participants' array approach if we could change schema,
-        // but sticking to the plan: we will query based on the user's ID in either field.
-        
-        // Since we can't easily merge two live streams without custom logic, let's try to query 
-        // based on the user's primary role if possible. 
-        // But wait, a user *could* technically be both (though unlikely in this app's current logic).
-        // Let's just set up two listeners and combine them locally.
-        
         val clientQuery = firestore.collection("chat_rooms")
             .whereEqualTo("clientId", userId)
             .orderBy("lastMessageTime", Query.Direction.DESCENDING)
             
+        // Query for professionalId (new) and craftsmanId (legacy)
+        val professionalQuery = firestore.collection("chat_rooms")
+            .whereEqualTo("professionalId", userId)
+            .orderBy("lastMessageTime", Query.Direction.DESCENDING)
+
         val craftsmanQuery = firestore.collection("chat_rooms")
             .whereEqualTo("craftsmanId", userId)
             .orderBy("lastMessageTime", Query.Direction.DESCENDING)
@@ -56,7 +40,7 @@ class ChatRepository @Inject constructor(
         
         val clientRegistration = clientQuery.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                close(error)
+                // Ignore error for now, or handle appropriately
                 return@addSnapshotListener
             }
             
@@ -68,9 +52,21 @@ class ChatRepository @Inject constructor(
             trySend(roomsMap.values.sortedByDescending { it.lastMessageTime })
         }
         
+        val professionalRegistration = professionalQuery.addSnapshotListener { snapshot, error ->
+            if (error != null) {
+                return@addSnapshotListener
+            }
+            
+            snapshot?.documents?.forEach { doc ->
+                doc.toObject(ChatRoom::class.java)?.let { room ->
+                    roomsMap[room.id] = room
+                }
+            }
+            trySend(roomsMap.values.sortedByDescending { it.lastMessageTime })
+        }
+
         val craftsmanRegistration = craftsmanQuery.addSnapshotListener { snapshot, error ->
             if (error != null) {
-                close(error)
                 return@addSnapshotListener
             }
             
@@ -84,6 +80,7 @@ class ChatRepository @Inject constructor(
 
         awaitClose {
             clientRegistration.remove()
+            professionalRegistration.remove()
             craftsmanRegistration.remove()
         }
     }
@@ -131,16 +128,17 @@ class ChatRepository @Inject constructor(
         val roomRef = firestore.collection("chat_rooms").document(chatRoomId)
         
         // Determine which counter to increment
-        // If sender is CLIENT, increment CRAFTSMAN unread count
-        // If sender is CRAFTSMAN, increment CLIENT unread count
+        // If sender is CLIENT, increment PROFESSIONAL unread count
+        // If sender is PROFESSIONAL, increment CLIENT unread count
         val updates = mutableMapOf<String, Any>(
             "lastMessage" to message.message,
             "lastMessageTime" to message.timestamp
         )
         
         if (message.senderRole == "CLIENT") {
-            // Increment craftsman's unread count
-            // Note: Firestore increment is safer for concurrent updates
+            // Increment professional's unread count
+            updates["unreadCountProfessional"] = com.google.firebase.firestore.FieldValue.increment(1)
+            // Also update legacy field for backward compatibility
             updates["unreadCountCraftsman"] = com.google.firebase.firestore.FieldValue.increment(1)
         } else {
             // Increment client's unread count
@@ -161,13 +159,16 @@ class ChatRepository @Inject constructor(
     suspend fun markMessagesAsRead(chatRoomId: String, userRole: String): Result<Unit> = try {
         val roomRef = firestore.collection("chat_rooms").document(chatRoomId)
         
-        val fieldToReset = if (userRole == "CLIENT") {
-            "unreadCountClient"
+        val updates = mutableMapOf<String, Any>()
+        
+        if (userRole == "CLIENT") {
+            updates["unreadCountClient"] = 0
         } else {
-            "unreadCountCraftsman"
+            updates["unreadCountProfessional"] = 0
+            updates["unreadCountCraftsman"] = 0 // Reset legacy field too
         }
         
-        roomRef.update(fieldToReset, 0).await()
+        roomRef.update(updates).await()
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)

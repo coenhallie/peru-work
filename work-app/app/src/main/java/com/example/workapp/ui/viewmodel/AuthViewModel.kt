@@ -40,8 +40,8 @@ class AuthViewModel @Inject constructor(
     val emailValidationState: StateFlow<EmailValidationState> = _emailValidationState.asStateFlow()
     
     // Quick access to role information
-    val isCraftsman: Boolean
-        get() = _cachedUserRole.value == UserRole.CRAFTSMAN
+    val isProfessional: Boolean
+        get() = _cachedUserRole.value == UserRole.PROFESSIONAL
 
     init {
         checkAuthStatus()
@@ -202,10 +202,10 @@ class AuthViewModel @Inject constructor(
                 craft = craft,
                 bio = bio,
                 workDistance = workDistance,
-                experience = if (role == UserRole.CRAFTSMAN) 0 else null,
-                rating = if (role == UserRole.CRAFTSMAN) 0.0 else null,
-                reviewCount = if (role == UserRole.CRAFTSMAN) 0 else null,
-                completedProjects = if (role == UserRole.CRAFTSMAN) 0 else null,
+                experience = if (role == UserRole.PROFESSIONAL) 0 else null,
+                rating = if (role == UserRole.PROFESSIONAL) 0.0 else null,
+                reviewCount = if (role == UserRole.PROFESSIONAL) 0 else null,
+                completedProjects = if (role == UserRole.PROFESSIONAL) 0 else null,
                 profileImageUrl = firebaseUser.photoUrl?.toString() // Default to Google photo
             )
 
@@ -279,7 +279,9 @@ class AuthViewModel @Inject constructor(
         hourlyRate: Double? = null,
         availability: String? = null,
         workDistance: Int? = null,
-        imageUri: Uri? = null
+        imageUri: Uri? = null,
+        newPreviousJobs: List<PreviousJobItem>? = null,
+        existingPreviousJobs: List<PreviousJob>? = null
     ) {
         try {
             val currentUser = _currentUser.value ?: throw Exception("No user signed in")
@@ -296,8 +298,30 @@ class AuthViewModel @Inject constructor(
                 workDistance = workDistance
             )
             
+            var finalUser = updatedUser
+
+            // Handle previous jobs
+            val allPreviousJobs = mutableListOf<PreviousJob>()
+            
+            // Add existing jobs that weren't deleted
+            if (existingPreviousJobs != null) {
+                allPreviousJobs.addAll(existingPreviousJobs)
+            }
+            
+            // Upload and add new jobs
+            if (newPreviousJobs != null && newPreviousJobs.isNotEmpty()) {
+                val uploadedNewJobs = uploadPreviousJobs(newPreviousJobs)
+                allPreviousJobs.addAll(uploadedNewJobs)
+            }
+            
+            // Only update previousJobs if we have changes (either new jobs added or existing passed explicitly)
+            // If both are null, we assume no changes to previous jobs section
+            if (newPreviousJobs != null || existingPreviousJobs != null) {
+                finalUser = finalUser.copy(previousJobs = allPreviousJobs)
+            }
+            
             // Update profile with optional image
-            authRepository.updateProfileWithImage(updatedUser, imageUri)
+            authRepository.updateProfileWithImage(finalUser, imageUri)
                 .onSuccess { user ->
                     _currentUser.value = user
                     _cachedUserRole.value = user.userRole

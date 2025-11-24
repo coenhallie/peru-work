@@ -129,7 +129,7 @@ fun WorkAppNavHost(
         if (currentUser == null) 0
         else chatRooms.sumOf { room ->
             if (currentUser!!.id == room.clientId) room.unreadCountClient
-            else room.unreadCountCraftsman
+            else room.unreadCountProfessional
         }
     }
     

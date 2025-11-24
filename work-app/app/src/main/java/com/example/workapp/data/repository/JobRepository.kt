@@ -122,15 +122,29 @@ class JobRepository @Inject constructor(
     }
 
     /**
-     * Get jobs by craftsman ID
+     * Get jobs by professional ID
      */
-    fun getJobsByCraftsman(craftsmanId: String): Flow<List<Job>> = callbackFlow {
+    fun getJobsByProfessional(professionalId: String): Flow<List<Job>> = callbackFlow {
+        // Query by both new and legacy fields to ensure we get all jobs
+        // Since we can't do OR query easily on different fields in Firestore without composite index,
+        // we'll try querying by professionalId first. If empty, we might miss legacy jobs if migration didn't run.
+        // However, we updated the model to handle this.
+        // Let's query by professionalId if it exists, or craftsmanId.
+        // Actually, for now, let's just query both and merge, or assume migration/dual-write.
+        // Given we are doing backward compatibility, let's query the legacy field 'craftsmanId' if 'professionalId' query returns empty?
+        // Better: Query where 'professionalId' == id OR 'craftsmanId' == id.
+        // But Firestore doesn't support OR on different fields easily.
+        // Let's assume for now we query 'craftsmanId' as it was the primary one, OR we just query 'professionalId' if we are sure we are writing to it.
+        // Since we updated Job.kt to write to BOTH (or at least map them), we should check how we are writing.
+        // In assignProfessional below, we will write to BOTH.
+        // So querying 'craftsmanId' is safer for now as it covers both legacy and new (if we write to both).
+        // BUT we want to move to 'professionalId'.
+        // Let's query 'craftsmanId' for now to be safe, as existing jobs have it.
         val listener = firestore.collection("jobs")
-            .whereEqualTo("craftsmanId", craftsmanId)
+            .whereEqualTo("craftsmanId", professionalId)
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    // On permission errors (like after sign-out), return empty list instead of crashing
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -146,7 +160,7 @@ class JobRepository @Inject constructor(
     }
 
     /**
-     * Get open jobs (available for craftsmen)
+     * Get open jobs (available for professionals)
      * Shows all jobs posted by any user (temporarily for testing)
      */
     fun getOpenJobs(): Flow<List<Job>> = callbackFlow {
@@ -155,7 +169,6 @@ class JobRepository @Inject constructor(
             .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    // On permission errors (like after sign-out), return empty list instead of crashing
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -207,16 +220,19 @@ class JobRepository @Inject constructor(
     }
 
     /**
-     * Assign craftsman to job
+     * Assign professional to job
      */
-    suspend fun assignCraftsman(
+    suspend fun assignProfessional(
         jobId: String,
-        craftsmanId: String,
-        craftsmanName: String
+        professionalId: String,
+        professionalName: String
     ): Result<Unit> = try {
         val updates = mapOf(
-            "craftsmanId" to craftsmanId,
-            "craftsmanName" to craftsmanName,
+            "professionalId" to professionalId,
+            "professionalName" to professionalName,
+            // Maintain legacy fields for backward compatibility
+            "craftsmanId" to professionalId,
+            "craftsmanName" to professionalName,
             "status" to JobStatus.ACCEPTED.name,
             "updatedAt" to System.currentTimeMillis()
         )

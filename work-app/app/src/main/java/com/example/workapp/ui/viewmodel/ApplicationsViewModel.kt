@@ -83,8 +83,8 @@ class ApplicationsViewModel @Inject constructor(
      */
     fun acceptApplication(
         applicationId: String,
-        craftsmanId: String,
-        craftsmanName: String
+        professionalId: String,
+        professionalName: String
     ) {
         viewModelScope.launch {
             _actionState.value = ActionState.Loading
@@ -92,8 +92,8 @@ class ApplicationsViewModel @Inject constructor(
             val result = applicationRepository.acceptApplication(
                 applicationId = applicationId,
                 jobId = jobId,
-                craftsmanId = craftsmanId,
-                craftsmanName = craftsmanName
+                professionalId = professionalId,
+                professionalName = professionalName
             )
             
             result.fold(

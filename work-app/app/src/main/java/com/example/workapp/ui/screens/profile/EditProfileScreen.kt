@@ -9,8 +9,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +30,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -35,6 +39,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -55,6 +60,15 @@ import com.example.workapp.ui.components.AddressAutofillTextField
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AuthViewModel
+import com.example.workapp.data.model.PreviousJob
+import com.example.workapp.ui.screens.auth.PreviousJobItem
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 
 /**
@@ -81,6 +95,12 @@ fun EditProfileScreen(
     var hourlyRate by remember { mutableStateOf(currentUser?.hourlyRate?.toString() ?: "") }
     var availability by remember { mutableStateOf(currentUser?.availability ?: "") }
     var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    
+    // Previous Projects State
+    var existingPreviousJobs by remember { mutableStateOf<List<PreviousJob>>(emptyList()) }
+    var newPreviousJobs by remember { mutableStateOf<List<PreviousJobItem>>(emptyList()) }
+    var showAddProjectDialog by remember { mutableStateOf(false) }
+    
     var isUploading by remember { mutableStateOf(false) }
     
     // Update form when user data loads
@@ -93,6 +113,7 @@ fun EditProfileScreen(
             bio = user.bio ?: ""
             hourlyRate = user.hourlyRate?.toString() ?: ""
             availability = user.availability ?: ""
+            existingPreviousJobs = user.previousJobs ?: emptyList()
         }
     }
     
@@ -292,8 +313,8 @@ fun EditProfileScreen(
                 }
             }
             
-            // Craftsman-specific fields (only show if user is a craftsman)
-            if (currentUser?.isCraftsman() == true) {
+            // Professional-specific fields (only show if user is a professional)
+            if (currentUser?.isProfessional() == true) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
@@ -395,6 +416,169 @@ fun EditProfileScreen(
                 }
             }
             
+            // Previous Projects Section (only if user is a professional)
+            if (currentUser?.isProfessional() == true) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Previous Projects",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            )
+                            
+                            TextButton(onClick = { showAddProjectDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(IconSizes.small)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add")
+                            }
+                        }
+                        
+                        if (existingPreviousJobs.isEmpty() && newPreviousJobs.isEmpty()) {
+                            Text(
+                                text = "No previous projects added yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        } else {
+                            // Existing Projects
+                            existingPreviousJobs.forEach { job ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Text(
+                                                text = job.description,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    existingPreviousJobs = existingPreviousJobs - job
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Delete project",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        
+                                        if (job.photoUrls.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            LazyRow(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                items(job.photoUrls) { url ->
+                                                    AsyncImage(
+                                                        model = url,
+                                                        contentDescription = "Project photo",
+                                                        modifier = Modifier
+                                                            .size(80.dp)
+                                                            .clip(MaterialTheme.shapes.small),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            // New Projects (Pending Upload)
+                            newPreviousJobs.forEach { job ->
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surface
+                                    ),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        width = 1.dp,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                                    )
+                                ) {
+                                    Column(modifier = Modifier.padding(12.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.Top
+                                        ) {
+                                            Text(
+                                                text = job.description,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    newPreviousJobs = newPreviousJobs - job
+                                                },
+                                                modifier = Modifier.size(24.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Delete project",
+                                                    tint = MaterialTheme.colorScheme.error,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                        
+                                        if (job.photoUris.isNotEmpty()) {
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            LazyRow(
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                items(job.photoUris) { uri ->
+                                                    AsyncImage(
+                                                        model = uri,
+                                                        contentDescription = "Project photo",
+                                                        modifier = Modifier
+                                                            .size(80.dp)
+                                                            .clip(MaterialTheme.shapes.small),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(8.dp))
             
             // Save Button
@@ -411,7 +595,9 @@ fun EditProfileScreen(
                                 bio = bio.takeIf { it.isNotEmpty() },
                                 hourlyRate = hourlyRate.toDoubleOrNull(),
                                 availability = availability.takeIf { it.isNotEmpty() },
-                                imageUri = selectedImageUri
+                                imageUri = selectedImageUri,
+                                newPreviousJobs = newPreviousJobs,
+                                existingPreviousJobs = existingPreviousJobs
                             )
                             snackbarHostState.showSnackbar("Profile updated successfully")
                             // Wait a moment then navigate back
@@ -453,5 +639,161 @@ fun EditProfileScreen(
             
             Spacer(modifier = Modifier.height(16.dp))
         }
+    }
+    
+    if (showAddProjectDialog) {
+        AddProjectBottomSheet(
+            onDismiss = { showAddProjectDialog = false },
+            onProjectAdded = { project ->
+                newPreviousJobs = newPreviousJobs + project
+                showAddProjectDialog = false
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddProjectBottomSheet(
+    onDismiss: () -> Unit,
+    onProjectAdded: (PreviousJobItem) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = null
+    ) {
+        AddProjectContent(
+            onDismiss = onDismiss,
+            onProjectAdded = onProjectAdded
+        )
+    }
+}
+
+@Composable
+fun AddProjectContent(
+    onDismiss: () -> Unit,
+    onProjectAdded: (PreviousJobItem) -> Unit
+) {
+    var description by remember { mutableStateOf("") }
+    var selectedPhotos by remember { mutableStateOf<List<Uri>>(emptyList()) }
+    
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickMultipleVisualMedia(2)
+    ) { uris ->
+        selectedPhotos = uris
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp)
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Text(
+            text = "Add Previous Project",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                fontWeight = FontWeight.Bold
+            )
+        )
+        
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text("Project Description") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3,
+            maxLines = 5
+        )
+        
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = "Photos (Max 2)",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                selectedPhotos.forEach { uri ->
+                    Box {
+                        AsyncImage(
+                            model = uri,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(100.dp)
+                                .clip(MaterialTheme.shapes.medium),
+                            contentScale = ContentScale.Crop
+                        )
+                        IconButton(
+                            onClick = { selectedPhotos = selectedPhotos - uri },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .size(24.dp)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Remove",
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                }
+                
+                if (selectedPhotos.size < 2) {
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(MaterialTheme.shapes.medium)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
+                                    )
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Add,
+                            contentDescription = "Add photo",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(32.dp)
+                        )
+                    }
+                }
+            }
+        }
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End
+        ) {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = {
+                    onProjectAdded(
+                        PreviousJobItem(
+                            description = description,
+                            photoUris = selectedPhotos
+                        )
+                    )
+                },
+                enabled = description.isNotBlank()
+            ) {
+                Text("Add Project")
+            }
+        }
+        Spacer(modifier = Modifier.height(24.dp)) 
     }
 }

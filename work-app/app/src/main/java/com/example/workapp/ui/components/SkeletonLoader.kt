@@ -182,7 +182,7 @@ fun SkeletonJobCard(
  * Skeleton loader for a Craftsman Card
  */
 @Composable
-fun SkeletonCraftsmanCard(
+fun SkeletonProfessionalCard(
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -413,7 +413,7 @@ fun SkeletonJobDetail(
  * Skeleton loader for Craftsman Detail Screen
  */
 @Composable
-fun SkeletonCraftsmanDetail(
+fun SkeletonProfessionalDetail(
     modifier: Modifier = Modifier
 ) {
     Column(

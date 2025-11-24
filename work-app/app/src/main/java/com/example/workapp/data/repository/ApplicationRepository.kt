@@ -29,10 +29,11 @@ class ApplicationRepository @Inject constructor(
      */
     suspend fun submitApplication(application: JobApplication): Result<String> {
         return try {
-            // Check if craftsman has already applied to this job
+            // Check if professional has already applied to this job
+            // We check both professionalId and legacy craftsmanId for safety
             val existingApplication = firestore.collection("job_applications")
                 .whereEqualTo("jobId", application.jobId)
-                .whereEqualTo("craftsmanId", application.craftsmanId)
+                .whereEqualTo("craftsmanId", application.professionalId) // Check legacy field with new ID (assuming they match)
                 .whereIn("statusString", listOf(
                     ApplicationStatus.PENDING.name,
                     ApplicationStatus.ACCEPTED.name
@@ -58,14 +59,15 @@ class ApplicationRepository @Inject constructor(
                 userId = application.clientId,
                 type = NotificationType.APPLICATION_RECEIVED,
                 title = "New Application Received",
-                message = "${application.craftsmanName} applied to ${application.jobTitle}",
+                message = "${application.professionalName} applied to ${application.jobTitle}",
                 data = mapOf(
                     "jobId" to application.jobId,
                     "applicationId" to docRef.id,
-                    "craftsmanId" to application.craftsmanId
+                    "professionalId" to application.professionalId,
+                    "craftsmanId" to application.professionalId // Legacy support
                 ),
                 actionUrl = "applications/${application.jobId}",
-                imageUrl = application.craftsmanProfileImage,
+                imageUrl = application.professionalProfileImage,
                 priority = NotificationPriority.HIGH
             )
             
@@ -100,11 +102,13 @@ class ApplicationRepository @Inject constructor(
     }
     
     /**
-     * Get all applications submitted by a craftsman
+     * Get all applications submitted by a professional
      */
-    fun getApplicationsByCraftsman(craftsmanId: String): Flow<List<JobApplication>> = callbackFlow {
+    fun getApplicationsByProfessional(professionalId: String): Flow<List<JobApplication>> = callbackFlow {
+        // Query by legacy field 'craftsmanId' as it's guaranteed to exist for now
+        // and we are writing professionalId to it as well.
         val listener = firestore.collection("job_applications")
-            .whereEqualTo("craftsmanId", craftsmanId)
+            .whereEqualTo("craftsmanId", professionalId)
             .orderBy("appliedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -166,15 +170,15 @@ class ApplicationRepository @Inject constructor(
     }
     
     /**
-     * Accept an application and assign craftsman to job
+     * Accept an application and assign professional to job
      * This will also reject all other pending applications for the same job
-     * Creates notifications for accepted craftsman and rejected craftsmen
+     * Creates notifications for accepted professional and rejected professionals
      */
     suspend fun acceptApplication(
         applicationId: String,
         jobId: String,
-        craftsmanId: String,
-        craftsmanName: String
+        professionalId: String,
+        professionalName: String
     ): Result<Unit> = try {
         // Get the accepted application details first
         val acceptedApp = getApplicationById(applicationId).getOrNull()
@@ -190,11 +194,14 @@ class ApplicationRepository @Inject constructor(
             "respondedAt" to System.currentTimeMillis()
         ))
         
-        // Update the job with assigned craftsman
+        // Update the job with assigned professional
         val jobRef = firestore.collection("jobs").document(jobId)
         batch.update(jobRef, mapOf(
-            "craftsmanId" to craftsmanId,
-            "craftsmanName" to craftsmanName,
+            "professionalId" to professionalId,
+            "professionalName" to professionalName,
+            // Legacy fields
+            "craftsmanId" to professionalId,
+            "craftsmanName" to professionalName,
             "status" to JobStatus.ACCEPTED.name,
             "updatedAt" to System.currentTimeMillis()
         ))
@@ -212,7 +219,7 @@ class ApplicationRepository @Inject constructor(
                 batch.update(doc.reference, mapOf(
                     "statusString" to ApplicationStatus.REJECTED.name,
                     "respondedAt" to System.currentTimeMillis(),
-                    "responseMessage" to "Client selected another craftsman"
+                    "responseMessage" to "Client selected another professional"
                 ))
                 doc.toObject(JobApplication::class.java)?.let { rejectedApps.add(it) }
             }
@@ -227,9 +234,12 @@ class ApplicationRepository @Inject constructor(
             clientId = acceptedApp.clientId,
             clientName = acceptedApp.clientName,
             // clientProfileImage = null, // We might need to fetch this if not in application
-            craftsmanId = craftsmanId,
-            craftsmanName = craftsmanName,
-            craftsmanProfileImage = acceptedApp.craftsmanProfileImage,
+            professionalId = professionalId,
+            professionalName = professionalName,
+            professionalProfileImage = acceptedApp.professionalProfileImage,
+            craftsmanId = professionalId, // Legacy field
+            craftsmanName = professionalName, // Legacy field
+            craftsmanProfileImage = acceptedApp.professionalProfileImage, // Legacy field
             lastMessage = "Chat created",
             lastMessageTime = System.currentTimeMillis(),
             isActive = true
@@ -254,9 +264,9 @@ class ApplicationRepository @Inject constructor(
         
         batch.commit().await()
         
-        // Create notification for accepted craftsman
+        // Create notification for accepted professional
         notificationRepository.createNotification(
-            userId = craftsmanId,
+            userId = professionalId,
             type = NotificationType.APPLICATION_ACCEPTED,
             title = "Application Accepted! 🎉",
             message = "Your application for ${acceptedApp.jobTitle} was accepted",
@@ -268,13 +278,13 @@ class ApplicationRepository @Inject constructor(
             priority = NotificationPriority.HIGH
         )
         
-        // Create notifications for rejected craftsmen
+        // Create notifications for rejected professionals
         rejectedApps.forEach { app ->
             notificationRepository.createNotification(
-                userId = app.craftsmanId,
+                userId = app.professionalId,
                 type = NotificationType.APPLICATION_REJECTED,
                 title = "Application Update",
-                message = "The client selected another craftsman for ${app.jobTitle}",
+                message = "The client selected another professional for ${app.jobTitle}",
                 data = mapOf(
                     "jobId" to jobId,
                     "applicationId" to app.id
@@ -291,7 +301,7 @@ class ApplicationRepository @Inject constructor(
     
     /**
      * Reject an application
-     * Creates notification for the craftsman
+     * Creates notification for the professional
      */
     suspend fun rejectApplication(
         applicationId: String,
@@ -312,9 +322,9 @@ class ApplicationRepository @Inject constructor(
             .update(updates)
             .await()
         
-        // Create notification for craftsman
+        // Create notification for professional
         notificationRepository.createNotification(
-            userId = application.craftsmanId,
+            userId = application.professionalId,
             type = NotificationType.APPLICATION_REJECTED,
             title = "Application Update",
             message = message ?: "Your application for ${application.jobTitle} was not selected",
@@ -332,7 +342,7 @@ class ApplicationRepository @Inject constructor(
     }
     
     /**
-     * Withdraw an application (craftsman cancels their application)
+     * Withdraw an application (professional cancels their application)
      */
     suspend fun withdrawApplication(applicationId: String): Result<Unit> = try {
         val application = getApplicationById(applicationId).getOrNull()
@@ -374,12 +384,12 @@ class ApplicationRepository @Inject constructor(
     }
     
     /**
-     * Check if a craftsman has already applied to a job
+     * Check if a professional has already applied to a job
      */
-    suspend fun hasApplied(jobId: String, craftsmanId: String): Result<Boolean> = try {
+    suspend fun hasApplied(jobId: String, professionalId: String): Result<Boolean> = try {
         val snapshot = firestore.collection("job_applications")
             .whereEqualTo("jobId", jobId)
-            .whereEqualTo("craftsmanId", craftsmanId)
+            .whereEqualTo("craftsmanId", professionalId) // Legacy field check
             .whereIn("statusString", listOf(
                 ApplicationStatus.PENDING.name,
                 ApplicationStatus.ACCEPTED.name

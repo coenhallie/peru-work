@@ -70,8 +70,8 @@ import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.theme.StarYellow
 import com.example.workapp.ui.viewmodel.AuthViewModel
-import com.example.workapp.ui.viewmodel.CraftsmenUiState
-import com.example.workapp.ui.viewmodel.CraftsmenViewModel
+import com.example.workapp.ui.viewmodel.ProfessionalUiState
+import com.example.workapp.ui.viewmodel.ProfessionalViewModel
 import com.example.workapp.ui.viewmodel.JobViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -81,29 +81,29 @@ import kotlinx.coroutines.launch
 
 /**
  * Home screen with role-based content display
- * - Regular users: See list of craftsmen
- * - Craftsmen: See recent job listings
+ * - Regular users: See list of professionals
+ * - Professionals: See recent job listings
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     authViewModel: AuthViewModel = hiltViewModel(),
-    craftsmenViewModel: CraftsmenViewModel = hiltViewModel(),
+    professionalViewModel: ProfessionalViewModel = hiltViewModel(),
     jobViewModel: JobViewModel = hiltViewModel(),
-    onCraftsmanClick: (String) -> Unit,
+    onProfessionalClick: (String) -> Unit,
     onJobClick: (String) -> Unit = {}
 ) {
     val currentUser by authViewModel.currentUser.collectAsState()
-    val isCraftsman = currentUser?.isCraftsman() == true
+    val isProfessional = currentUser?.isProfessional() == true
     
-    // Craftsmen view states
-    val craftsmenUiState by craftsmenViewModel.uiState.collectAsState()
-    val searchQuery by craftsmenViewModel.searchQuery.collectAsState()
-    val selectedCategory by craftsmenViewModel.selectedCategory.collectAsState()
-    val maxDistance by craftsmenViewModel.maxDistance.collectAsState()
-    val categories by craftsmenViewModel.categories.collectAsState()
+    // Professionals view states
+    val professionalUiState by professionalViewModel.uiState.collectAsState()
+    val searchQuery by professionalViewModel.searchQuery.collectAsState()
+    val selectedCategory by professionalViewModel.selectedCategory.collectAsState()
+    val maxDistance by professionalViewModel.maxDistance.collectAsState()
+    val categories by professionalViewModel.categories.collectAsState()
     
-    // Jobs view states (for craftsmen)
+    // Jobs view states (for professionals)
     val openJobs by jobViewModel.openJobs.collectAsState()
     val isJobsLoading by jobViewModel.isLoading.collectAsState()
 
@@ -113,11 +113,11 @@ fun HomeScreen(
                 title = {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
-                            text = if (isCraftsman) "Recent Jobs" else "Find a craftsman",
+                            text = if (isProfessional) "Recent Jobs" else "Find a professional",
                             style = MaterialTheme.typography.titleLarge
                         )
                         Text(
-                            text = if (isCraftsman)
+                            text = if (isProfessional)
                                 "Latest opportunities for you"
                             else
                                 "Hand-picked professionals near you",
@@ -134,41 +134,41 @@ fun HomeScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (isCraftsman) {
-            // Show recent jobs for craftsmen
-            CraftsmenHomeContent(
+        if (isProfessional) {
+            // Show recent jobs for professionals
+            ProfessionalHomeContent(
                 jobs = openJobs,
                 isLoading = isJobsLoading,
                 padding = padding,
                 onJobClick = onJobClick
             )
         } else {
-            // Show craftsmen list for regular users
+            // Show professionals list for regular users
             RegularUserHomeContent(
-                uiState = craftsmenUiState,
+                uiState = professionalUiState,
                 searchQuery = searchQuery,
                 selectedCategory = selectedCategory,
                 maxDistance = maxDistance,
                 categories = categories,
                 padding = padding,
-                onSearchQueryChange = { craftsmenViewModel.searchCraftsmen(it) },
-                onClearSearch = { craftsmenViewModel.clearSearch() },
-                onCategorySelected = { craftsmenViewModel.filterByCategory(it) },
-                onDistanceSelected = { craftsmenViewModel.filterByDistance(it) },
-                onClearFilters = { craftsmenViewModel.clearFilters() },
-                onCraftsmanClick = onCraftsmanClick
+                onSearchQueryChange = { professionalViewModel.searchProfessionals(it) },
+                onClearSearch = { professionalViewModel.clearSearch() },
+                onCategorySelected = { professionalViewModel.filterByCategory(it) },
+                onDistanceSelected = { professionalViewModel.filterByDistance(it) },
+                onClearFilters = { professionalViewModel.clearFilters() },
+                onProfessionalClick = onProfessionalClick
             )
         }
     }
 }
 
 /**
- * Home content for regular users showing craftsmen list
+ * Home content for regular users showing professionals list
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun RegularUserHomeContent(
-    uiState: CraftsmenUiState,
+    uiState: ProfessionalUiState,
     searchQuery: String,
     selectedCategory: String?,
     maxDistance: Double?,
@@ -179,7 +179,7 @@ private fun RegularUserHomeContent(
     onCategorySelected: (String?) -> Unit,
     onDistanceSelected: (Double?) -> Unit,
     onClearFilters: () -> Unit,
-    onCraftsmanClick: (String) -> Unit
+    onProfessionalClick: (String) -> Unit
 ) {
     var showFilterSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
@@ -196,7 +196,7 @@ private fun RegularUserHomeContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Search craftsmen...") },
+            placeholder = { Text("Search professionals...") },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Actions.search,
@@ -258,25 +258,30 @@ private fun RegularUserHomeContent(
             },
             modifier = Modifier.fillMaxSize()
         ) {
-            when (uiState) {
-                is CraftsmenUiState.Loading -> {
-                    LazyColumn(
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        items(5) {
-                            com.example.workapp.ui.components.SkeletonCraftsmanCard()
-                        }
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = uiState is ProfessionalUiState.Loading,
+            modifier = Modifier.fillMaxSize(),
+            skeletonContent = {
+                LazyColumn(
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(5) {
+                        com.example.workapp.ui.components.SkeletonProfessionalCard()
                     }
                 }
-                is CraftsmenUiState.Empty -> {
+            }
+        ) {
+            when (uiState) {
+                is ProfessionalUiState.Loading -> { /* Handled by skeletonContent */ }
+                is ProfessionalUiState.Empty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No craftsmen found",
+                                text = "No professionals found",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -289,21 +294,21 @@ private fun RegularUserHomeContent(
                         }
                     }
                 }
-                is CraftsmenUiState.Success -> {
-                    val craftsmen = uiState.craftsmen
+                is ProfessionalUiState.Success -> {
+                    val professionals = uiState.professionals
                     LazyColumn(
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(craftsmen) { craftsman ->
-                            CraftsmanCard(
-                                craftsman = craftsman,
-                                onClick = { onCraftsmanClick(craftsman.id) }
+                        items(professionals) { professional ->
+                            ProfessionalCard(
+                                professional = professional,
+                                onClick = { onProfessionalClick(professional.id) }
                             )
                         }
                     }
                 }
-                is CraftsmenUiState.Error -> {
+                is ProfessionalUiState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -316,6 +321,7 @@ private fun RegularUserHomeContent(
                     }
                 }
             }
+        }
         }
     }
 
@@ -528,11 +534,11 @@ private fun CategoryFilterItem(
 }
 
 /**
- * Home content for craftsmen showing recent jobs
+ * Home content for professionals showing recent jobs
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun CraftsmenHomeContent(
+private fun ProfessionalHomeContent(
     jobs: List<Job>,
     isLoading: Boolean,
     padding: PaddingValues,
@@ -565,58 +571,65 @@ private fun CraftsmenHomeContent(
             .fillMaxSize()
             .padding(padding)
     ) {
-        if (isLoading) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(5) {
-                    com.example.workapp.ui.components.SkeletonJobCard()
-                }
-            }
-        } else if (jobs.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = isLoading,
+            modifier = Modifier
+                .fillMaxSize(),
+            skeletonContent = {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = AppIcons.Content.work,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .padding(bottom = 16.dp)
-                            .size(IconSizes.large),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = "No jobs available",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        text = "Check back later for new opportunities",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
+                    items(5) {
+                        com.example.workapp.ui.components.SkeletonJobCard()
+                    }
                 }
             }
-        } else {
-            // Jobs list
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp, top = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(jobs) { job ->
-                    RecentJobCard(
-                        job = job,
-                        onClick = { onJobClick(job.id) }
-                    )
+        ) {
+            if (jobs.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.work,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .padding(bottom = 16.dp)
+                                .size(IconSizes.large),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                        Text(
+                            text = "No jobs available",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "Check back later for new opportunities",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+            } else {
+                // Jobs list
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 90.dp, top = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(jobs) { job ->
+                        RecentJobCard(
+                            job = job,
+                            onClick = { onJobClick(job.id) }
+                        )
+                    }
                 }
             }
         }
@@ -624,14 +637,14 @@ private fun CraftsmenHomeContent(
 }
 
 @Composable
-private fun CraftsmanCard(
-    craftsman: User,
+private fun ProfessionalCard(
+    professional: User,
     onClick: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         shape = MaterialTheme.shapes.extraLarge,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -648,8 +661,8 @@ private fun CraftsmanCard(
         ) {
             // Profile image
             AsyncImage(
-                model = craftsman.profileImageUrl ?: "https://via.placeholder.com/150",
-                contentDescription = "${craftsman.name} profile",
+                model = professional.profileImageUrl ?: "https://via.placeholder.com/150",
+                contentDescription = "${professional.name} profile",
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
@@ -663,7 +676,7 @@ private fun CraftsmanCard(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = craftsman.name,
+                    text = professional.name,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.SemiBold
                     )
@@ -672,7 +685,7 @@ private fun CraftsmanCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = craftsman.craft ?: "Craftsman",
+                    text = professional.craft ?: "Professional",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -690,22 +703,22 @@ private fun CraftsmanCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${craftsman.rating ?: 0.0}",
+                        text = "${professional.rating ?: 0.0}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "(${craftsman.reviewCount ?: 0} reviews)",
+                        text = "(${professional.reviewCount ?: 0} reviews)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
 
-                if (craftsman.experience != null) {
+                if (professional.experience != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${craftsman.experience} years experience",
+                        text = "${professional.experience} years experience",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -716,7 +729,7 @@ private fun CraftsmanCard(
 }
 
 /**
- * Card displaying recent job for craftsmen home screen
+ * Card displaying recent job for professionals home screen
  */
 @Composable
 private fun RecentJobCard(
@@ -724,9 +737,9 @@ private fun RecentJobCard(
     onClick: () -> Unit
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant

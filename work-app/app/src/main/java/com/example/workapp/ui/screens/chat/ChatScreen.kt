@@ -47,7 +47,11 @@ fun ChatScreen(
     // Find current chat room to display title
     val currentRoom = chatRooms.find { it.id == chatRoomId }
     val isClient = currentUser?.id == currentRoom?.clientId
-    val otherUserName = if (isClient) currentRoom?.craftsmanName else currentRoom?.clientName
+    val otherUserName = if (isClient) {
+        if (!currentRoom?.professionalName.isNullOrEmpty()) currentRoom?.professionalName else currentRoom?.craftsmanName
+    } else {
+        currentRoom?.clientName
+    }
     
     var messageText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()

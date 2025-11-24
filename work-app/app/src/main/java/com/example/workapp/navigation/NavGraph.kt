@@ -18,7 +18,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.example.workapp.ui.screens.chat.ChatListScreen
 import com.example.workapp.ui.screens.chat.ChatScreen
-import com.example.workapp.ui.screens.craftsman.CraftsmanDetailScreen
+import com.example.workapp.ui.screens.professional.ProfessionalDetailScreen
 import com.example.workapp.ui.screens.home.HomeScreen
 import com.example.workapp.ui.screens.jobs.ApplicationsListScreen
 import com.example.workapp.ui.screens.jobs.CreateJobScreen
@@ -47,8 +47,8 @@ sealed class Screen(val route: String) {
     object ChatRoom : Screen("chat/{chatRoomId}") {
         fun createRoute(chatRoomId: String) = "chat/$chatRoomId"
     }
-    object CraftsmanDetail : Screen("craftsman/{craftsmanId}") {
-        fun createRoute(craftsmanId: String) = "craftsman/$craftsmanId"
+    object ProfessionalDetail : Screen("professional/{professionalId}") {
+        fun createRoute(professionalId: String) = "professional/$professionalId"
     }
     object EditJob : Screen("edit_job/{jobId}") {
         fun createRoute(jobId: String) = "edit_job/$jobId"
@@ -150,8 +150,8 @@ fun NavGraph(
         composable(Screen.Home.route) {
             HomeScreen(
                 authViewModel = authViewModel,
-                onCraftsmanClick = { craftsmanId ->
-                    navController.navigate(Screen.CraftsmanDetail.createRoute(craftsmanId))
+                onProfessionalClick = { professionalId ->
+                    navController.navigate(Screen.ProfessionalDetail.createRoute(professionalId))
                 },
                 onJobClick = { jobId ->
                     navController.navigate(Screen.JobDetail.createRoute(jobId))
@@ -171,7 +171,7 @@ fun NavGraph(
 
         composable(Screen.JobsList.route) {
             val currentUser = (authState as? AuthState.Authenticated)?.user
-            val isCraftsman = currentUser?.isCraftsman() == true
+            val isProfessional = currentUser?.isProfessional() == true
             
             JobsListScreen(
                 onJobClick = { jobId ->
@@ -185,7 +185,7 @@ fun NavGraph(
                 },
                 currentUserId = currentUser?.id,
                 showMyJobs = false,
-                isCraftsman = isCraftsman
+                isProfessional = isProfessional
             )
         }
         
@@ -219,9 +219,9 @@ fun NavGraph(
 
         composable(Screen.MyJobs.route) {
             val currentUser = (authState as? AuthState.Authenticated)?.user
-            val isCraftsman = currentUser?.isCraftsman() == true
+            val isProfessional = currentUser?.isProfessional() == true
             
-            // For craftsmen: Show their applications with status
+            // For professionals: Show their applications with status
             // For regular users: Show jobs they posted
             JobsListScreen(
                 onJobClick = { jobId ->
@@ -234,8 +234,8 @@ fun NavGraph(
                     navController.navigate(Screen.ApplicationsList.createRoute(jobId))
                 },
                 currentUserId = currentUser?.id,
-                showMyJobs = !isCraftsman,  // Only show "my posted jobs" for non-craftsmen
-                isCraftsman = isCraftsman
+                showMyJobs = !isProfessional,  // Only show "my posted jobs" for non-professionals
+                isProfessional = isProfessional
             )
         }
 
@@ -273,14 +273,14 @@ fun NavGraph(
         }
 
         composable(
-            route = Screen.CraftsmanDetail.route,
+            route = Screen.ProfessionalDetail.route,
             arguments = listOf(
-                navArgument("craftsmanId") { type = NavType.StringType }
+                navArgument("professionalId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
-            val craftsmanId = backStackEntry.arguments?.getString("craftsmanId") ?: return@composable
-            CraftsmanDetailScreen(
-                craftsmanId = craftsmanId,
+            val professionalId = backStackEntry.arguments?.getString("professionalId") ?: return@composable
+            ProfessionalDetailScreen(
+                professionalId = professionalId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -296,7 +296,7 @@ fun NavGraph(
             JobDetailScreen(
                 jobId = jobId,
                 currentUserId = currentUser?.id,
-                isCraftsman = currentUser?.isCraftsman() == true,
+                isProfessional = currentUser?.isProfessional() == true,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToApplications = { jobId ->
                     navController.navigate(Screen.ApplicationsList.createRoute(jobId))

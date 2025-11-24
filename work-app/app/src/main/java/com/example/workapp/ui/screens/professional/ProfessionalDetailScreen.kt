@@ -1,4 +1,4 @@
-package com.example.workapp.ui.screens.craftsman
+package com.example.workapp.ui.screens.professional
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
@@ -42,32 +44,32 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.workapp.data.model.User
-import com.example.workapp.data.repository.CraftsmenRepository
+import com.example.workapp.data.repository.ProfessionalRepository
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.theme.StarYellow
 import kotlinx.coroutines.launch
 
 /**
- * Craftsman detail screen showing profile and booking options
+ * Professional detail screen showing profile and booking options
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CraftsmanDetailScreen(
-    craftsmanId: String,
+fun ProfessionalDetailScreen(
+    professionalId: String,
     onNavigateBack: () -> Unit,
-    repository: CraftsmenRepository = hiltViewModel<CraftsmanDetailViewModel>().repository
+    repository: ProfessionalRepository = hiltViewModel<ProfessionalDetailViewModel>().repository
 ) {
-    var craftsman by remember { mutableStateOf<User?>(null) }
+    var professional by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(craftsmanId) {
+    LaunchedEffect(professionalId) {
         scope.launch {
-            repository.getCraftsmanById(craftsmanId)
+            repository.getProfessionalById(professionalId)
                 .onSuccess {
-                    craftsman = it
+                    professional = it
                     isLoading = false
                 }
                 .onFailure {
@@ -82,7 +84,7 @@ fun CraftsmanDetailScreen(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = "Craftsman",
+                        text = "Professional",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -104,31 +106,29 @@ fun CraftsmanDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        when {
-            isLoading -> {
-
-                com.example.workapp.ui.components.SkeletonCraftsmanDetail(
-                    modifier = Modifier.padding(padding)
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = isLoading,
+            modifier = Modifier.padding(padding),
+            skeletonContent = {
+                com.example.workapp.ui.components.SkeletonProfessionalDetail(
+                    modifier = Modifier.fillMaxSize()
                 )
             }
-
-            error != null -> {
+        ) {
+            if (error != null) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = error ?: "Error loading craftsman",
+                        text = error ?: "Error loading professional",
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-            }
-            craftsman != null -> {
-                CraftsmanDetailContent(
-                    craftsman = craftsman!!,
-                    modifier = Modifier.padding(padding)
+            } else if (professional != null) {
+                ProfessionalDetailContent(
+                    professional = professional!!,
+                    modifier = Modifier.fillMaxSize()
                 )
             }
         }
@@ -136,8 +136,8 @@ fun CraftsmanDetailScreen(
 }
 
 @Composable
-private fun CraftsmanDetailContent(
-    craftsman: User,
+private fun ProfessionalDetailContent(
+    professional: User,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -163,8 +163,8 @@ private fun CraftsmanDetailContent(
             ) {
                 // Profile Image
                 AsyncImage(
-                    model = craftsman.profileImageUrl ?: "https://via.placeholder.com/200",
-                    contentDescription = "${craftsman.name} profile",
+                    model = professional.profileImageUrl ?: "https://via.placeholder.com/200",
+                    contentDescription = "${professional.name} profile",
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape),
@@ -174,7 +174,7 @@ private fun CraftsmanDetailContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = craftsman.name,
+                    text = professional.name,
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.Bold
                     )
@@ -183,7 +183,7 @@ private fun CraftsmanDetailContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = craftsman.craft ?: "Craftsman",
+                    text = professional.currentProfession ?: "Professional",
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -202,13 +202,13 @@ private fun CraftsmanDetailContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "${craftsman.rating ?: 0.0}",
+                        text = "${professional.rating ?: 0.0}",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "(${craftsman.reviewCount ?: 0} reviews)",
+                        text = "(${professional.reviewCount ?: 0} reviews)",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -223,12 +223,12 @@ private fun CraftsmanDetailContent(
                     InfoChip(
                         icon = AppIcons.Content.work,
                         label = "Experience",
-                        value = "${craftsman.experience ?: 0} years"
+                        value = "${professional.experience ?: 0} years"
                     )
                     InfoChip(
                         icon = AppIcons.Content.work,
                         label = "Projects",
-                        value = "${craftsman.completedProjects ?: 0}"
+                        value = "${professional.completedProjects ?: 0}"
                     )
                 }
             }
@@ -237,7 +237,7 @@ private fun CraftsmanDetailContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // Bio Section
-        if (!craftsman.bio.isNullOrBlank()) {
+        if (!professional.bio.isNullOrBlank()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -255,7 +255,7 @@ private fun CraftsmanDetailContent(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = craftsman.bio,
+                        text = professional.bio,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                     )
@@ -266,7 +266,7 @@ private fun CraftsmanDetailContent(
         }
 
         // Specialties Section
-        if (!craftsman.specialties.isNullOrEmpty()) {
+        if (!professional.specialties.isNullOrEmpty()) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
@@ -283,7 +283,7 @@ private fun CraftsmanDetailContent(
                         )
                     )
                     Spacer(modifier = Modifier.height(12.dp))
-                    craftsman.specialties.forEach { specialty ->
+                    professional.specialties.forEach { specialty ->
                         Row(
                             modifier = Modifier.padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -302,6 +302,61 @@ private fun CraftsmanDetailContent(
                 }
             }
 
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+
+        // Previous Projects Section
+        if (!professional.previousJobs.isNullOrEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.large,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Previous Projects",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    professional.previousJobs.forEach { job ->
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            Text(
+                                text = job.description,
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            
+                            if (job.photoUrls.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(job.photoUrls) { url ->
+                                        AsyncImage(
+                                            model = url,
+                                            contentDescription = "Project photo",
+                                            modifier = Modifier
+                                                .size(120.dp)
+                                                .clip(MaterialTheme.shapes.medium),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            androidx.compose.material3.HorizontalDivider(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                            )
+                        }
+                    }
+                }
+            }
+            
             Spacer(modifier = Modifier.height(16.dp))
         }
 
@@ -326,19 +381,19 @@ private fun CraftsmanDetailContent(
                 ContactRow(
                     icon = AppIcons.Content.phone,
                     label = "Phone",
-                    value = craftsman.phone
+                    value = professional.phone
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 ContactRow(
                     icon = AppIcons.Content.email,
                     label = "Email",
-                    value = craftsman.email
+                    value = professional.email
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 ContactRow(
                     icon = AppIcons.Content.place,
                     label = "Location",
-                    value = craftsman.location
+                    value = professional.location
                 )
             }
         }
@@ -420,6 +475,6 @@ private fun ContactRow(
 
 // Simple ViewModel for dependency injection
 @dagger.hilt.android.lifecycle.HiltViewModel
-class CraftsmanDetailViewModel @javax.inject.Inject constructor(
-    val repository: CraftsmenRepository
+class ProfessionalDetailViewModel @javax.inject.Inject constructor(
+    val repository: ProfessionalRepository
 ) : androidx.lifecycle.ViewModel()

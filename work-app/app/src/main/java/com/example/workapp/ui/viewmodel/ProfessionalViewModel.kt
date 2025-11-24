@@ -3,7 +3,7 @@ package com.example.workapp.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.workapp.data.model.User
-import com.example.workapp.data.repository.CraftsmenRepository
+import com.example.workapp.data.repository.ProfessionalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,17 +12,17 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for craftsmen listing and search
+ * ViewModel for professional listing and search
  */
 @HiltViewModel
-class CraftsmenViewModel @Inject constructor(
-    private val craftsmenRepository: CraftsmenRepository,
+class ProfessionalViewModel @Inject constructor(
+    private val professionalRepository: ProfessionalRepository,
     private val locationRepository: com.example.workapp.data.repository.LocationRepository,
     private val authRepository: com.example.workapp.data.repository.AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<CraftsmenUiState>(CraftsmenUiState.Loading)
-    val uiState: StateFlow<CraftsmenUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<ProfessionalUiState>(ProfessionalUiState.Loading)
+    val uiState: StateFlow<ProfessionalUiState> = _uiState.asStateFlow()
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -36,31 +36,31 @@ class CraftsmenViewModel @Inject constructor(
     private val _categories = MutableStateFlow<List<String>>(emptyList())
     val categories: StateFlow<List<String>> = _categories.asStateFlow()
 
-    // Keep track of all loaded craftsmen to apply local filters
-    private var allCraftsmen: List<User> = emptyList()
+    // Keep track of all loaded professionals to apply local filters
+    private var allProfessionals: List<User> = emptyList()
 
     init {
-        loadCraftsmen()
+        loadProfessionals()
         loadCategories()
     }
 
     /**
-     * Refresh craftsmen data
+     * Refresh professionals data
      */
     fun refresh() {
-        loadCraftsmen()
+        loadProfessionals()
     }
 
-    private fun loadCraftsmen() {
+    private fun loadProfessionals() {
         viewModelScope.launch {
             try {
-                craftsmenRepository.getAllCraftsmen().collect { craftsmen ->
-                    allCraftsmen = craftsmen
+                professionalRepository.getAllProfessionals().collect { professionals ->
+                    allProfessionals = professionals
                     applyFilters()
                 }
             } catch (e: Exception) {
-                _uiState.value = CraftsmenUiState.Error(
-                    e.message ?: "Failed to load craftsmen"
+                _uiState.value = ProfessionalUiState.Error(
+                    e.message ?: "Failed to load professionals"
                 )
             }
         }
@@ -68,14 +68,14 @@ class CraftsmenViewModel @Inject constructor(
 
     private fun loadCategories() {
         viewModelScope.launch {
-            craftsmenRepository.getCraftCategories()
+            professionalRepository.getProfessionCategories()
                 .onSuccess { cats ->
                     _categories.value = cats
                 }
         }
     }
 
-    fun searchCraftsmen(query: String) {
+    fun searchProfessionals(query: String) {
         _searchQuery.value = query
         applyFilters()
     }
@@ -92,26 +92,26 @@ class CraftsmenViewModel @Inject constructor(
 
     private fun applyFilters() {
         viewModelScope.launch {
-            _uiState.value = CraftsmenUiState.Loading
+            _uiState.value = ProfessionalUiState.Loading
 
             val query = _searchQuery.value
             val category = _selectedCategory.value
             val distance = _maxDistance.value
 
-            var filteredList = allCraftsmen
+            var filteredList = allProfessionals
 
             // 1. Apply Search
             if (query.isNotBlank()) {
                 filteredList = filteredList.filter { user ->
                     user.name.contains(query, ignoreCase = true) ||
-                    user.craft?.contains(query, ignoreCase = true) == true ||
+                    user.currentProfession?.contains(query, ignoreCase = true) == true ||
                     user.specialties?.any { it.contains(query, ignoreCase = true) } == true
                 }
             }
 
             // 2. Apply Category
             if (category != null) {
-                filteredList = filteredList.filter { it.craft == category }
+                filteredList = filteredList.filter { it.currentProfession == category }
             }
 
             // 3. Apply Distance
@@ -124,10 +124,10 @@ class CraftsmenViewModel @Inject constructor(
                     if (userProfile != null && userProfile.location.isNotBlank()) {
                         val userCoords = locationRepository.getCoordinates(userProfile.location)
                         if (userCoords != null) {
-                            filteredList = filteredList.filter { craftsman ->
-                                if (craftsman.location.isBlank()) return@filter false
-                                val craftsmanCoords = locationRepository.getCoordinates(craftsman.location) ?: return@filter false
-                                val dist = locationRepository.calculateDistanceKm(userCoords, craftsmanCoords)
+                            filteredList = filteredList.filter { professional ->
+                                if (professional.location.isBlank()) return@filter false
+                                val professionalCoords = locationRepository.getCoordinates(professional.location) ?: return@filter false
+                                val dist = locationRepository.calculateDistanceKm(userCoords, professionalCoords)
                                 dist <= distance
                             }
                         }
@@ -136,9 +136,9 @@ class CraftsmenViewModel @Inject constructor(
             }
 
             _uiState.value = if (filteredList.isEmpty()) {
-                CraftsmenUiState.Empty
+                ProfessionalUiState.Empty
             } else {
-                CraftsmenUiState.Success(filteredList)
+                ProfessionalUiState.Success(filteredList)
             }
         }
     }
@@ -156,9 +156,9 @@ class CraftsmenViewModel @Inject constructor(
     }
 }
 
-sealed class CraftsmenUiState {
-    object Loading : CraftsmenUiState()
-    object Empty : CraftsmenUiState()
-    data class Success(val craftsmen: List<User>) : CraftsmenUiState()
-    data class Error(val message: String) : CraftsmenUiState()
+sealed class ProfessionalUiState {
+    object Loading : ProfessionalUiState()
+    object Empty : ProfessionalUiState()
+    data class Success(val professionals: List<User>) : ProfessionalUiState()
+    data class Error(val message: String) : ProfessionalUiState()
 }

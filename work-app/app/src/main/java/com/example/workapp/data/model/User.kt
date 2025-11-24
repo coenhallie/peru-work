@@ -31,8 +31,9 @@ data class User(
     
     val profileImageUrl: String? = null,
     
-    // Craftsman-specific fields
-    val craft: String? = null,
+    // Professional-specific fields
+    val profession: String? = null, // Renamed from craft
+    val craft: String? = null, // Legacy field support
     val bio: String? = null,
     val experience: Int? = null,
     val rating: Double? = null,
@@ -48,16 +49,22 @@ data class User(
     @get:Exclude
     val userRole: UserRole
         get() = try {
-            UserRole.valueOf(roleString.uppercase())
+            val role = roleString.uppercase()
+            if (role == "CRAFTSMAN") UserRole.PROFESSIONAL else UserRole.valueOf(role)
         } catch (e: IllegalArgumentException) {
             UserRole.CLIENT
         }
     
     @Exclude
-    fun isCraftsman(): Boolean = userRole == UserRole.CRAFTSMAN
+    fun isProfessional(): Boolean = userRole == UserRole.PROFESSIONAL
+
+    // Helper to get profession from either new or legacy field
+    @get:Exclude
+    val currentProfession: String?
+        get() = profession ?: craft
 }
 
 enum class UserRole {
     CLIENT,
-    CRAFTSMAN
+    PROFESSIONAL
 }

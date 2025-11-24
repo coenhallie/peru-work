@@ -106,11 +106,11 @@ class ChatViewModel @Inject constructor(
                         // Let's just use the AuthViewModel's user if available, but we are in ChatViewModel.
                         // We can fetch the user document.
                         
-                        // Optimization: We'll just mark it based on the current user ID matching client or craftsman in the room.
+                        // Optimization: We'll just mark it based on the current user ID matching client or professional in the room.
                         // We need the room details first.
                         val room = _chatRooms.value.find { it.id == chatRoomId }
                         if (room != null) {
-                            val role = if (room.clientId == currentUser.uid) "CLIENT" else "CRAFTSMAN"
+                            val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
                             chatRepository.markMessagesAsRead(chatRoomId, role)
                         }
                     }
@@ -127,8 +127,10 @@ class ChatViewModel @Inject constructor(
             // We need the chat room to know the role
             val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
             
-            val role = if (room.clientId == currentUser.uid) "CLIENT" else "CRAFTSMAN"
-            val senderName = if (role == "CLIENT") room.clientName else room.craftsmanName
+            val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
+            val senderName = if (role == "CLIENT") room.clientName else {
+                if (room.professionalName.isNotEmpty()) room.professionalName else room.craftsmanName
+            }
             
             val message = Message(
                 chatRoomId = chatRoomId,
@@ -162,8 +164,10 @@ class ChatViewModel @Inject constructor(
                         // Determine sender details
                         val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
                         
-                        val role = if (room.clientId == currentUser.uid) "CLIENT" else "CRAFTSMAN"
-                        val senderName = if (role == "CLIENT") room.clientName else room.craftsmanName
+                        val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
+                        val senderName = if (role == "CLIENT") room.clientName else {
+                            if (room.professionalName.isNotEmpty()) room.professionalName else room.craftsmanName
+                        }
                         
                         val message = Message(
                             chatRoomId = chatRoomId,

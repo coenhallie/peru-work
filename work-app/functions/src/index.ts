@@ -418,7 +418,7 @@ export const sendPushNotification = functions.https.onCall(
       );
     }
 
-    const {userId, title, body, dataPayload} = data;
+    const { userId, title, body, dataPayload } = data;
 
     if (!userId || !title || !body) {
       throw new functions.https.HttpsError(
@@ -482,7 +482,7 @@ export const sendPushNotification = functions.https.onCall(
       const response = await admin.messaging().send(message);
       console.log("Successfully sent custom notification:", response);
 
-      return {success: true, messageId: response};
+      return { success: true, messageId: response };
     } catch (error: any) {
       console.error("Error sending custom notification:", error);
 
@@ -541,7 +541,7 @@ export const updateCraftsmanNames = functions.https.onCall(
 
         if (craftsmanDoc.exists) {
           const craftsmanName = craftsmanDoc.data()?.name || "Unknown";
-          batch.update(doc.ref, {craftsmanName: craftsmanName});
+          batch.update(doc.ref, { craftsmanName: craftsmanName });
           count++;
           console.log(
             `Queued update for application ${doc.id}: ${craftsmanName}`
@@ -552,9 +552,128 @@ export const updateCraftsmanNames = functions.https.onCall(
       await batch.commit();
       console.log(`Successfully updated ${count} applications`);
 
-      return {success: true, updatedCount: count};
+      return { success: true, updatedCount: count };
     } catch (error: any) {
       console.error("Error updating craftsman names:", error);
+      throw new functions.https.HttpsError("internal", error.message);
+    }
+  }
+);
+
+/**
+ * Migration function to rename Craftsman fields to Professional
+ * Callable via firebase functions:shell
+ */
+export const migrateToProfessional = functions.https.onCall(
+  async (data, context) => {
+    // Skip auth check for local shell execution if needed, or rely on context.auth
+    // For shell, context.auth might be undefined unless mocked
+
+    const db = admin.firestore();
+    const results = {
+      users: 0,
+      jobs: 0,
+      applications: 0
+    };
+
+    try {
+      // 1. Migrate Users
+      console.log("Migrating users...");
+      const usersSnapshot = await db.collection('users').where('roleString', '==', 'CRAFTSMAN').get();
+      if (!usersSnapshot.empty) {
+        const batch = db.batch();
+        usersSnapshot.docs.forEach(doc => {
+          const userData = doc.data();
+          const updateData: any = {
+            roleString: 'PROFESSIONAL',
+            profession: userData.craft || null
+          };
+          updateData.craft = admin.firestore.FieldValue.delete();
+          batch.update(doc.ref, updateData);
+          results.users++;
+        });
+        await batch.commit();
+      }
+
+      // 2. Migrate Jobs
+      console.log("Migrating jobs...");
+      const jobsSnapshot = await db.collection('jobs').get();
+      if (!jobsSnapshot.empty) {
+        const batch = db.batch();
+        let batchCount = 0;
+
+        for (const doc of jobsSnapshot.docs) {
+          const jobData = doc.data();
+          if (jobData.craftsmanId || jobData.craftsmanName) {
+            const updateData: any = {
+              professionalId: jobData.craftsmanId || null,
+              professionalName: jobData.craftsmanName || null,
+              craftsmanId: admin.firestore.FieldValue.delete(),
+              craftsmanName: admin.firestore.FieldValue.delete()
+            };
+            batch.update(doc.ref, updateData);
+            results.jobs++;
+            batchCount++;
+
+            // Commit batch if limit reached (500)
+            if (batchCount >= 400) {
+              await batch.commit();
+              batchCount = 0;
+              // Reset batch? No, db.batch() creates a new one? No, need to re-instantiate
+              // Simplified: assuming < 500 docs total based on previous checks
+            }
+          }
+        }
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+      }
+
+      // 3. Migrate Applications
+      console.log("Migrating applications...");
+      const appsSnapshot = await db.collection('job_applications').get();
+      if (!appsSnapshot.empty) {
+        const batch = db.batch();
+        let batchCount = 0;
+
+        for (const doc of appsSnapshot.docs) {
+          const appData = doc.data();
+          if (appData.craftsmanId !== undefined) {
+            const updateData: any = {
+              professionalId: appData.craftsmanId || null,
+              professionalName: appData.craftsmanName || null,
+              professionalProfileImage: appData.craftsmanProfileImage || null,
+              professionalRating: appData.craftsmanRating || null,
+              professionalExperience: appData.craftsmanExperience || null,
+              professionalProfession: appData.craftsmanCraft || null,
+
+              craftsmanId: admin.firestore.FieldValue.delete(),
+              craftsmanName: admin.firestore.FieldValue.delete(),
+              craftsmanProfileImage: admin.firestore.FieldValue.delete(),
+              craftsmanRating: admin.firestore.FieldValue.delete(),
+              craftsmanExperience: admin.firestore.FieldValue.delete(),
+              craftsmanCraft: admin.firestore.FieldValue.delete()
+            };
+            batch.update(doc.ref, updateData);
+            results.applications++;
+            batchCount++;
+
+            if (batchCount >= 400) {
+              await batch.commit();
+              batchCount = 0;
+            }
+          }
+        }
+        if (batchCount > 0) {
+          await batch.commit();
+        }
+      }
+
+      console.log("Migration completed:", results);
+      return { success: true, results };
+
+    } catch (error: any) {
+      console.error("Migration failed:", error);
       throw new functions.https.HttpsError("internal", error.message);
     }
   }

@@ -107,17 +107,20 @@ fun ProfileScreen(
         containerColor = MaterialTheme.colorScheme.background
 
     ) { padding ->
-        if (currentUser == null) {
-            com.example.workapp.ui.components.SkeletonProfileScreen(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            )
-        } else {
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = currentUser == null,
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding),
+            skeletonContent = {
+                com.example.workapp.ui.components.SkeletonProfileScreen(
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        ) {
             Column(
-                modifier = modifier
+                modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)

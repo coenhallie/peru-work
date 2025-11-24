@@ -58,9 +58,9 @@ data class Notification(
 enum class NotificationType {
     // Application lifecycle notifications
     APPLICATION_RECEIVED,        // Client: New application received for their job
-    APPLICATION_ACCEPTED,        // Craftsman: Their application was accepted
-    APPLICATION_REJECTED,        // Craftsman: Their application was rejected
-    APPLICATION_WITHDRAWN,       // Client: Craftsman withdrew their application
+    APPLICATION_ACCEPTED,        // Professional: Their application was accepted
+    APPLICATION_REJECTED,        // Professional: Their application was rejected
+    APPLICATION_WITHDRAWN,       // Client: Professional withdrew their application
     
     // Job lifecycle notifications 
     JOB_STARTED,                // Both: Job work has officially started
@@ -71,8 +71,8 @@ enum class NotificationType {
     NEW_MESSAGE,                // Both: New chat message received
     
     // System notifications
-    PROFILE_VIEWED,             // Craftsman: Client viewed their profile
-    REVIEW_RECEIVED             // Craftsman: New review posted on their profile
+    PROFILE_VIEWED,             // Professional: Client viewed their profile
+    REVIEW_RECEIVED             // Professional: New review posted on their profile
 }
 
 /**

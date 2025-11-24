@@ -80,10 +80,10 @@ class AuthRepository @Inject constructor(
             craft = craft,
             bio = bio,
             workDistance = workDistance,
-            experience = if (role == UserRole.CRAFTSMAN) 0 else null,
-            rating = if (role == UserRole.CRAFTSMAN) 0.0 else null,
-            reviewCount = if (role == UserRole.CRAFTSMAN) 0 else null,
-            completedProjects = if (role == UserRole.CRAFTSMAN) 0 else null
+            experience = if (role == UserRole.PROFESSIONAL) 0 else null,
+            rating = if (role == UserRole.PROFESSIONAL) 0.0 else null,
+            reviewCount = if (role == UserRole.PROFESSIONAL) 0 else null,
+            completedProjects = if (role == UserRole.PROFESSIONAL) 0 else null
         )
 
         // Save to Firestore

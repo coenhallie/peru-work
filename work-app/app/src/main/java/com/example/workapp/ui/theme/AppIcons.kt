@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
@@ -89,6 +90,7 @@ object AppIcons {
         val camera = Icons.Filled.CameraAlt
         val save = Icons.Filled.Save
         val send = Icons.AutoMirrored.Filled.Send
+        val check = Icons.Filled.Check
     }
     
     /**

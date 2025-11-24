@@ -85,8 +85,8 @@ class ApplicationViewModel @Inject constructor(
                     return@launch
                 }
 
-                if (!userProfile.isCraftsman()) {
-                    _submitApplicationState.value = SubmitApplicationState.Error("Only craftsmen can apply to jobs")
+                if (!userProfile.isProfessional()) {
+                    _submitApplicationState.value = SubmitApplicationState.Error("Only professionals can apply to jobs")
                     return@launch
                 }
 
@@ -103,6 +103,13 @@ class ApplicationViewModel @Inject constructor(
                     jobBudget = jobBudget,
                     clientId = clientId,
                     clientName = clientName,
+                    professionalId = currentUser.uid,
+                    professionalName = userProfile.name,
+                    professionalProfileImage = userProfile.profileImageUrl,
+                    professionalRating = userProfile.rating,
+                    professionalExperience = userProfile.experience,
+                    professionalProfession = userProfile.craft,
+                    // Legacy fields for backward compatibility
                     craftsmanId = currentUser.uid,
                     craftsmanName = userProfile.name,
                     craftsmanProfileImage = userProfile.profileImageUrl,
@@ -185,7 +192,7 @@ class ApplicationViewModel @Inject constructor(
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
                 try {
-                    applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
+                    applicationRepository.getApplicationsByProfessional(currentUser.uid).collect { applications ->
                         _myApplications.value = applications
                         _isLoading.value = false
                     }
@@ -207,7 +214,7 @@ class ApplicationViewModel @Inject constructor(
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
                 try {
-                    applicationRepository.getApplicationsByCraftsman(currentUser.uid).collect { applications ->
+                    applicationRepository.getApplicationsByProfessional(currentUser.uid).collect { applications ->
                         // Fetch job details for each application
                         val applicationsWithJobs = applications.mapNotNull { application ->
                             val jobResult = jobRepository.getJobById(application.jobId)
@@ -258,8 +265,8 @@ class ApplicationViewModel @Inject constructor(
     fun acceptApplication(
         applicationId: String,
         jobId: String,
-        craftsmanId: String,
-        craftsmanName: String
+        professionalId: String,
+        professionalName: String
     ) {
         viewModelScope.launch {
             _acceptApplicationState.value = AcceptApplicationState.Loading
@@ -268,8 +275,8 @@ class ApplicationViewModel @Inject constructor(
                 val result = applicationRepository.acceptApplication(
                     applicationId = applicationId,
                     jobId = jobId,
-                    craftsmanId = craftsmanId,
-                    craftsmanName = craftsmanName
+                    professionalId = professionalId,
+                    professionalName = professionalName
                 )
 
                 result.fold(

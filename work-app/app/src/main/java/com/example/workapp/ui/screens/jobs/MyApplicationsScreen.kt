@@ -204,60 +204,66 @@ fun MyApplicationsScreen(
                 .padding(padding)
         ) {
 
-            if (isLoading) {
-                LazyColumn(
-                    modifier = modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(5) {
-                        com.example.workapp.ui.components.SkeletonApplicationCard()
-                    }
-                }
-            } else if (applications.isEmpty()) {
-                // Empty state
-                Box(
-                    modifier = modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Icon(
-                        imageVector = AppIcons.Content.work,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSizes.large),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = "No applications yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        text = "Apply to jobs to see them here",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    }
-                }
-            } else {
-                // Applications list
-                LazyColumn(
-                    modifier = modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                items(applications) { application ->
-                    MyApplicationCard(
-                        application = application,
-                        onClick = { onJobClick(application.jobId) },
-                        onWithdraw = {
-                            selectedApplicationId = application.id
-                            showWithdrawDialog = true
+            com.example.workapp.ui.components.FadeInLoadingContent(
+                isLoading = isLoading,
+                modifier = modifier.fillMaxSize(),
+                skeletonContent = {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(5) {
+                            com.example.workapp.ui.components.SkeletonApplicationCard()
                         }
-                        )
+                    }
+                }
+            ) {
+                if (applications.isEmpty()) {
+                    // Empty state
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = AppIcons.Content.work,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSizes.large),
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                            Text(
+                                text = "No applications yet",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                            Text(
+                                text = "Apply to jobs to see them here",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                            )
+                        }
+                    }
+                } else {
+                    // Applications list
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(applications) { application ->
+                            MyApplicationCard(
+                                application = application,
+                                onClick = { onJobClick(application.jobId) },
+                                onWithdraw = {
+                                    selectedApplicationId = application.id
+                                    showWithdrawDialog = true
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -276,9 +282,9 @@ private fun MyApplicationCard(
     modifier: Modifier = Modifier
 ) {
     Card(
+        onClick = onClick,
         modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant

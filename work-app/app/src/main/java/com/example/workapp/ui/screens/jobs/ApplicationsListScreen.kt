@@ -1,5 +1,6 @@
 package com.example.workapp.ui.screens.jobs
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -85,7 +86,7 @@ fun ApplicationsListScreen(
 
     // Load applications when screen opens
     LaunchedEffect(jobId) {
-        viewModel.loadPendingApplicationsForJob(jobId)
+        viewModel.loadApplicationsForJob(jobId)
     }
 
     // Handle accept state
@@ -94,7 +95,8 @@ fun ApplicationsListScreen(
             is AcceptApplicationState.Success -> {
                 snackbarHostState.showSnackbar("Application accepted! Job assigned to craftsman.")
                 viewModel.resetAcceptApplicationState()
-                onNavigateBack() // Go back after successful acceptance
+                // Reload to update the list with new statuses
+                viewModel.loadApplicationsForJob(jobId)
             }
             is AcceptApplicationState.Error -> {
                 snackbarHostState.showSnackbar(
@@ -113,6 +115,8 @@ fun ApplicationsListScreen(
                 snackbarHostState.showSnackbar("Application rejected")
                 viewModel.resetRejectApplicationState()
                 selectedApplicationId = null
+                // Reload to update the list
+                viewModel.loadApplicationsForJob(jobId)
             }
             is RejectApplicationState.Error -> {
                 snackbarHostState.showSnackbar(
@@ -140,7 +144,7 @@ fun ApplicationsListScreen(
                 onDismissRequest = { showAcceptDialog = false },
                 title = { Text("Accept Application") },
                 text = {
-                    Text("Accept ${app.craftsmanName}'s application? This will assign the job to them and notify other applicants.")
+                    Text("Accept ${app.applicantName}'s application? This will assign the job to them and notify other applicants.")
                 },
                 confirmButton = {
                     Button(
@@ -148,8 +152,8 @@ fun ApplicationsListScreen(
                             viewModel.acceptApplication(
                                 applicationId = app.id,
                                 jobId = app.jobId,
-                                craftsmanId = app.craftsmanId,
-                                craftsmanName = app.craftsmanName
+                                professionalId = app.applicantId,
+                                professionalName = app.applicantName
                             )
                             showAcceptDialog = false
                         }
@@ -173,7 +177,7 @@ fun ApplicationsListScreen(
             AlertDialog(
                 onDismissRequest = { showRejectDialog = false },
                 title = { Text("Reject Application") },
-                text = { Text("Reject ${app.craftsmanName}'s application?") },
+                text = { Text("Reject ${app.applicantName}'s application?") },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -198,7 +202,7 @@ fun ApplicationsListScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
-                    Column {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = "Job Applications",
                             style = MaterialTheme.typography.titleLarge.copy(
@@ -206,7 +210,7 @@ fun ApplicationsListScreen(
                             )
                         )
                         Text(
-                            text = "${applications.size} pending applications",
+                            text = "${applications.size} applications",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
                         )
@@ -229,72 +233,89 @@ fun ApplicationsListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (isLoading) {
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(3) {
-                    com.example.workapp.ui.components.SkeletonApplicationReviewCard()
-                }
-            }
-        } else if (applications.isEmpty()) {
-            // Empty state
-            Box(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = isLoading,
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding),
+            skeletonContent = {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(
-                        imageVector = AppIcons.Content.person,
-                        contentDescription = null,
-                        modifier = Modifier.size(IconSizes.large),
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
-                    Text(
-                        text = "No applications yet",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                    )
-                    Text(
-                        text = "Check back later for craftsmen applications",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                    )
+                    items(3) {
+                        com.example.workapp.ui.components.SkeletonApplicationReviewCard()
+                    }
                 }
             }
-        } else {
-            // Applications list
-            LazyColumn(
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(applications) { application ->
-                    ApplicationCard(
-                        application = application,
-                        onAccept = {
-                            selectedApplicationId = application.id
-                            showAcceptDialog = true
-                        },
-                        onReject = {
-                            selectedApplicationId = application.id
-                            showRejectDialog = true
-                        },
-                        isLoading = acceptApplicationState is AcceptApplicationState.Loading ||
-                                   (rejectApplicationState is RejectApplicationState.Loading &&
-                                    selectedApplicationId == application.id)
+        ) {
+            if (applications.isEmpty()) {
+                // Empty state
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = AppIcons.Content.person,
+                            contentDescription = null,
+                            modifier = Modifier.size(IconSizes.large),
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                        Text(
+                            text = "No applications yet",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        Text(
+                            text = "Check back later for craftsmen applications",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    }
+                }
+            } else {
+                // Check if any application is accepted to determine if we should show action buttons
+                val isJobFilled = applications.any { it.status == ApplicationStatus.ACCEPTED }
+
+                // Applications list
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Sort: Accepted first, then Pending, then others
+                    val sortedApplications = applications.sortedWith(
+                        compareBy<JobApplication> { 
+                            when(it.status) {
+                                ApplicationStatus.ACCEPTED -> 0
+                                ApplicationStatus.PENDING -> 1
+                                else -> 2
+                            }
+                        }.thenByDescending { it.appliedAt }
                     )
+
+                    items(sortedApplications) { application ->
+                        ApplicationCard(
+                            application = application,
+                            isJobFilled = isJobFilled,
+                            onAccept = {
+                                selectedApplicationId = application.id
+                                showAcceptDialog = true
+                            },
+                            onReject = {
+                                selectedApplicationId = application.id
+                                showRejectDialog = true
+                            },
+                            isLoading = acceptApplicationState is AcceptApplicationState.Loading ||
+                                       (rejectApplicationState is RejectApplicationState.Loading &&
+                                        selectedApplicationId == application.id)
+                        )
+                    }
                 }
             }
         }
@@ -307,11 +328,15 @@ fun ApplicationsListScreen(
 @Composable
 private fun ApplicationCard(
     application: JobApplication,
+    isJobFilled: Boolean,
     onAccept: () -> Unit,
     onReject: () -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val isAccepted = application.status == ApplicationStatus.ACCEPTED
+    val isRejected = application.status == ApplicationStatus.REJECTED
+    
     Card(
         modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -324,72 +349,115 @@ private fun ApplicationCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Craftsman header
+            // Header: Craftsman Info + Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Avatar placeholder
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .padding(2.dp),
-                    contentAlignment = Alignment.Center
+                // Craftsman Info (Left)
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.Top
                 ) {
-                    Icon(
-                        imageVector = AppIcons.Content.person,
-                        contentDescription = null,
-                        modifier = Modifier.size(32.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(12.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = application.craftsmanName,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    // Avatar placeholder
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(2.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        application.craftsmanCraft?.let { craft ->
-                            Text(
-                                text = craft,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        Icon(
+                            imageVector = AppIcons.Content.person,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column {
+                        Text(
+                            text = application.applicantName,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold
                             )
-                        }
+                        )
                         
-                        application.craftsmanRating?.let { rating ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = AppIcons.Content.star,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            application.applicantProfession?.let { craft ->
                                 Text(
-                                    text = String.format("%.1f", rating),
+                                    text = craft,
                                     style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                             }
+                            
+                            application.applicantRating?.let { rating ->
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = AppIcons.Content.star,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(2.dp))
+                                    Text(
+                                        text = String.format("%.1f", rating),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                        
+                        application.applicantExperience?.let { experience ->
+                            Text(
+                                text = "$experience years experience",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
                         }
                     }
+                }
+
+                // Status Badge (Right) - Only if not pending
+                if (application.status != ApplicationStatus.PENDING) {
+                    val (statusText, statusColor, containerColor) = when(application.status) {
+                        ApplicationStatus.ACCEPTED -> Triple(
+                            "Hired", 
+                            MaterialTheme.colorScheme.onSecondaryContainer,
+                            MaterialTheme.colorScheme.secondaryContainer
+                        )
+                        ApplicationStatus.REJECTED -> Triple(
+                            "Rejected", 
+                            MaterialTheme.colorScheme.onErrorContainer,
+                            MaterialTheme.colorScheme.errorContainer
+                        )
+                        ApplicationStatus.WITHDRAWN -> Triple(
+                            "Withdrawn", 
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)
+                        )
+                        else -> Triple("", MaterialTheme.colorScheme.onSurface, MaterialTheme.colorScheme.surface)
+                    }
                     
-                    application.craftsmanExperience?.let { experience ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(containerColor)
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
                         Text(
-                            text = "$experience years experience",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            text = statusText,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = statusColor
                         )
                     }
                 }
@@ -457,8 +525,8 @@ private fun ApplicationCard(
                 )
             }
 
-            // Action buttons
-            if (application.status == ApplicationStatus.PENDING) {
+            // Action buttons - Only show if application is PENDING and job is NOT filled
+            if (application.status == ApplicationStatus.PENDING && !isJobFilled) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Row(

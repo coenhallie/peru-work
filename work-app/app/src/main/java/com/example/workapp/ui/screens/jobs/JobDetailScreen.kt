@@ -83,7 +83,7 @@ import java.util.Locale
 fun JobDetailScreen(
     jobId: String,
     currentUserId: String?,
-    isCraftsman: Boolean,
+    isProfessional: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToApplications: (String) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -100,8 +100,8 @@ fun JobDetailScreen(
     var isMapVisible by remember { mutableStateOf(true) }
 
     // Check application status when screen is opened
-    LaunchedEffect(jobId, isCraftsman) {
-        if (isCraftsman) {
+    LaunchedEffect(jobId, isProfessional) {
+        if (isProfessional) {
             applicationViewModel.checkIfApplied(jobId)
         }
     }
@@ -169,12 +169,15 @@ fun JobDetailScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             // Show FAB for CLIENT viewing their own job with applications
-            if (job != null && job!!.applicationCount > 0 && !isCraftsman) {
+            if (job != null && job!!.applicationCount > 0 && !isProfessional) {
                 val isJobOwner = currentUserId != null &&
                                 currentUserId.isNotEmpty() &&
                                 job!!.clientId == currentUserId
                 
                 if (isJobOwner) {
+                    val isAccepted = job!!.status == JobStatus.ACCEPTED
+                    val fabText = if (isAccepted) "View Applications" else "Review (${job!!.applicationCount})"
+                    
                     ExtendedFloatingActionButton(
                         onClick = { onNavigateToApplications(jobId) },
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -186,12 +189,12 @@ fun JobDetailScreen(
                     ) {
                         Icon(
                             imageVector = AppIcons.Content.person,
-                            contentDescription = "Review Applications",
+                            contentDescription = if (isAccepted) "View Applications" else "Review Applications",
                             modifier = Modifier.size(IconSizes.medium)
                         )
                         Spacer(modifier = Modifier.padding(4.dp))
                         Text(
-                            text = "Review (${job!!.applicationCount})",
+                            text = fabText,
                             style = MaterialTheme.typography.labelLarge.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -227,28 +230,28 @@ fun JobDetailScreen(
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        if (job == null) {
-            // Loading state
-            // Loading state
-            com.example.workapp.ui.components.SkeletonJobDetail(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-            )
-        } else {
+        com.example.workapp.ui.components.FadeInLoadingContent(
+            isLoading = job == null,
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding),
+            skeletonContent = {
+                com.example.workapp.ui.components.SkeletonJobDetail(
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        ) {
             // Job details content
             JobDetailContent(
                 job = job!!,
                 currentUserId = currentUserId,
-                isCraftsman = isCraftsman,
+                isProfessional = isProfessional,
                 hasApplied = hasApplied,
                 applicationCount = job!!.applicationCount,
                 onApply = { showApplicationDialog = true },
                 onViewApplications = { onNavigateToApplications(jobId) },
                 isMapVisible = isMapVisible,
-                modifier = modifier
-                    .fillMaxSize()
-                    .padding(padding)
+                modifier = Modifier.fillMaxSize()
             )
         }
     }
@@ -261,7 +264,7 @@ fun JobDetailScreen(
 private fun JobDetailContent(
     job: Job,
     currentUserId: String?,
-    isCraftsman: Boolean,
+    isProfessional: Boolean,
     hasApplied: Boolean,
     applicationCount: Int,
     onApply: () -> Unit,
@@ -492,12 +495,12 @@ private fun JobDetailContent(
                         value = job.clientName
                     )
                     
-                    // Show craftsman info if assigned
-                    job.craftsmanName?.let { craftsmanName ->
+                    // Show professional info if assigned
+                    job.professionalName?.let { professionalName ->
                         DetailRow(
                             icon = AppIcons.Content.work,
                             label = "Assigned to",
-                            value = craftsmanName
+                            value = professionalName
                         )
                     }
                 }
@@ -549,8 +552,8 @@ private fun JobDetailContent(
             }
 
             // Action buttons based on user role and job status
-            if (isCraftsman && job.status == JobStatus.OPEN && job.clientId != currentUserId) {
-                // Craftsman viewing open job
+            if (isProfessional && job.status == JobStatus.OPEN && job.clientId != currentUserId) {
+                // Professional viewing open job
                 if (hasApplied) {
                     // Already applied - show status
                     Card(
@@ -609,7 +612,7 @@ private fun JobDetailContent(
                         )
                     }
                 }
-            } else if (!isCraftsman && job.clientId == currentUserId && applicationCount > 0) {
+            } else if (!isProfessional && job.clientId == currentUserId && applicationCount > 0) {
                 // Client viewing their job with applications - Button moved to sticky bottom bar
             }
 
