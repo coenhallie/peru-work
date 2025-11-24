@@ -23,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-    private val cloudinaryRepository: CloudinaryRepository
+    private val cloudinaryRepository: CloudinaryRepository,
+    private val notificationRepository: com.example.workapp.data.repository.NotificationRepository
 ) : ViewModel() {
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Initial)
@@ -442,6 +443,18 @@ class AuthViewModel @Inject constructor(
 
     fun resetEmailValidation() {
         _emailValidationState.value = EmailValidationState.Idle
+    }
+
+    fun updateFCMToken(token: String) {
+        viewModelScope.launch {
+            notificationRepository.updateFCMToken(token)
+                .onSuccess {
+                    android.util.Log.d("AuthViewModel", "FCM token updated successfully")
+                }
+                .onFailure { error ->
+                    android.util.Log.e("AuthViewModel", "Failed to update FCM token", error)
+                }
+        }
     }
 }
 

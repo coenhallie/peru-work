@@ -10,6 +10,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -39,18 +41,55 @@ import com.google.android.gms.tasks.OnCompleteListener
  */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    
+    private var notificationRoute by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
         // Configure edge-to-edge with proper window insets
         WindowCompat.setDecorFitsSystemWindows(window, false)
         enableEdgeToEdge()
+
+        // Check for notification intent on launch
+        notificationRoute = getNotificationRouteFromIntent(intent)
         
         setContent {
             WorkAppTheme {
-                WorkAppNavHost()
+                WorkAppNavHost(
+                    notificationRoute = notificationRoute,
+                    onNotificationHandled = { notificationRoute = null }
+                )
             }
         }
+    }
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        // Handle notification intent when app is already running
+        val route = getNotificationRouteFromIntent(intent)
+        if (route != null) {
+            notificationRoute = route
+        }
+    }
+
+    private fun getNotificationRouteFromIntent(intent: android.content.Intent?): String? {
+        intent?.extras?.let { extras ->
+            val action = extras.getString("action")
+            if (action == "JOB_APPLICATION") {
+                val jobId = extras.getString("jobId")
+                if (jobId != null) {
+                    return Screen.ApplicationsList.createRoute(jobId)
+                }
+            }
+            if (action == "NEW_MESSAGE") {
+                val chatId = extras.getString("chatId")
+                if (chatId != null && chatId.isNotEmpty()) {
+                    return Screen.ChatRoom.createRoute(chatId)
+                }
+            }
+        }
+        return null
     }
 
     private val requestPermissionLauncher = registerForActivityResult(
@@ -116,7 +155,9 @@ class MainActivity : ComponentActivity() {
 fun WorkAppNavHost(
     authViewModel: AuthViewModel = hiltViewModel(),
     chatViewModel: ChatViewModel = hiltViewModel(),
-    jobViewModel: JobViewModel = hiltViewModel()
+    jobViewModel: JobViewModel = hiltViewModel(),
+    notificationRoute: String? = null,
+    onNotificationHandled: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -130,6 +171,26 @@ fun WorkAppNavHost(
         else chatRooms.sumOf { room ->
             if (currentUser!!.id == room.clientId) room.unreadCountClient
             else room.unreadCountProfessional
+        }
+    }
+
+    // Sync FCM token when user logs in
+    androidx.compose.runtime.LaunchedEffect(currentUser) {
+        if (currentUser != null) {
+            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    val token = task.result
+                    authViewModel.updateFCMToken(token)
+                }
+            }
+        }
+    }
+
+    // Handle notification navigation
+    androidx.compose.runtime.LaunchedEffect(notificationRoute, currentUser) {
+        if (notificationRoute != null && currentUser != null) {
+            navController.navigate(notificationRoute)
+            onNotificationHandled()
         }
     }
     
