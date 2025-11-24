@@ -110,16 +110,20 @@ fun JobDetailScreen(
     LaunchedEffect(submitApplicationState) {
         when (submitApplicationState) {
             is SubmitApplicationState.Success -> {
-                snackbarHostState.showSnackbar("Application submitted successfully!")
+                showApplicationDialog = false
                 applicationViewModel.resetSubmitApplicationState()
                 applicationViewModel.checkIfApplied(jobId)
-                showApplicationDialog = false
+                snackbarHostState.showSnackbar("Application submitted successfully!")
             }
             is SubmitApplicationState.Error -> {
-                snackbarHostState.showSnackbar(
-                    (submitApplicationState as SubmitApplicationState.Error).message
-                )
-                applicationViewModel.resetSubmitApplicationState()
+                // If dialog is not shown, show snackbar (fallback)
+                if (!showApplicationDialog) {
+                    snackbarHostState.showSnackbar(
+                        (submitApplicationState as SubmitApplicationState.Error).message
+                    )
+                    applicationViewModel.resetSubmitApplicationState()
+                }
+                // If dialog IS shown, we don't reset state yet so dialog can show error
             }
             else -> {}
         }
@@ -144,10 +148,15 @@ fun JobDetailScreen(
     
     // Show application submission dialog
     if (showApplicationDialog && job != null) {
+        val errorMessage = (submitApplicationState as? SubmitApplicationState.Error)?.message
+        
         ApplicationSubmissionDialog(
             jobTitle = job!!.title,
             jobBudget = job!!.budget,
-            onDismiss = { showApplicationDialog = false },
+            onDismiss = { 
+                showApplicationDialog = false
+                applicationViewModel.resetSubmitApplicationState()
+            },
             onSubmit = { proposedPrice, estimatedDuration, coverLetter, availability ->
                 applicationViewModel.submitApplication(
                     jobId = jobId,
@@ -161,15 +170,30 @@ fun JobDetailScreen(
                     availability = availability
                 )
             },
-            isLoading = submitApplicationState is SubmitApplicationState.Loading
+            isLoading = submitApplicationState is SubmitApplicationState.Loading,
+            error = errorMessage
         )
     }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
+            // Debug logging
+            LaunchedEffect(job, currentUserId) {
+                if (job != null) {
+                    println("DEBUG_FAB: JobId=${job!!.id}")
+                    println("DEBUG_FAB: AppCount=${job!!.applicationCount}")
+                    println("DEBUG_FAB: ClientId=${job!!.clientId}")
+                    println("DEBUG_FAB: CurrentUserId=$currentUserId")
+                    println("DEBUG_FAB: IsOwner=${job!!.clientId == currentUserId}")
+                    println("DEBUG_FAB: IsProfessional=$isProfessional")
+                } else {
+                    println("DEBUG_FAB: Job is null")
+                }
+            }
+
             // Show FAB for CLIENT viewing their own job with applications
-            if (job != null && job!!.applicationCount > 0 && !isProfessional) {
+            if (job != null && job!!.applicationCount > 0) {
                 val isJobOwner = currentUserId != null &&
                                 currentUserId.isNotEmpty() &&
                                 job!!.clientId == currentUserId

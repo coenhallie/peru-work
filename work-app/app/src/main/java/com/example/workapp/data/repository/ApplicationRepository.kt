@@ -30,10 +30,9 @@ class ApplicationRepository @Inject constructor(
     suspend fun submitApplication(application: JobApplication): Result<String> {
         return try {
             // Check if professional has already applied to this job
-            // We check both professionalId and legacy craftsmanId for safety
             val existingApplication = firestore.collection("job_applications")
                 .whereEqualTo("jobId", application.jobId)
-                .whereEqualTo("craftsmanId", application.professionalId) // Check legacy field with new ID (assuming they match)
+                .whereEqualTo("professionalId", application.professionalId)
                 .whereIn("statusString", listOf(
                     ApplicationStatus.PENDING.name,
                     ApplicationStatus.ACCEPTED.name
@@ -63,8 +62,7 @@ class ApplicationRepository @Inject constructor(
                 data = mapOf(
                     "jobId" to application.jobId,
                     "applicationId" to docRef.id,
-                    "professionalId" to application.professionalId,
-                    "craftsmanId" to application.professionalId // Legacy support
+                    "professionalId" to application.professionalId
                 ),
                 actionUrl = "applications/${application.jobId}",
                 imageUrl = application.professionalProfileImage,
@@ -105,10 +103,8 @@ class ApplicationRepository @Inject constructor(
      * Get all applications submitted by a professional
      */
     fun getApplicationsByProfessional(professionalId: String): Flow<List<JobApplication>> = callbackFlow {
-        // Query by legacy field 'craftsmanId' as it's guaranteed to exist for now
-        // and we are writing professionalId to it as well.
         val listener = firestore.collection("job_applications")
-            .whereEqualTo("craftsmanId", professionalId)
+            .whereEqualTo("professionalId", professionalId)
             .orderBy("appliedAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
@@ -199,9 +195,6 @@ class ApplicationRepository @Inject constructor(
         batch.update(jobRef, mapOf(
             "professionalId" to professionalId,
             "professionalName" to professionalName,
-            // Legacy fields
-            "craftsmanId" to professionalId,
-            "craftsmanName" to professionalName,
             "status" to JobStatus.ACCEPTED.name,
             "updatedAt" to System.currentTimeMillis()
         ))
@@ -237,9 +230,6 @@ class ApplicationRepository @Inject constructor(
             professionalId = professionalId,
             professionalName = professionalName,
             professionalProfileImage = acceptedApp.professionalProfileImage,
-            craftsmanId = professionalId, // Legacy field
-            craftsmanName = professionalName, // Legacy field
-            craftsmanProfileImage = acceptedApp.professionalProfileImage, // Legacy field
             lastMessage = "Chat created",
             lastMessageTime = System.currentTimeMillis(),
             isActive = true
@@ -389,7 +379,7 @@ class ApplicationRepository @Inject constructor(
     suspend fun hasApplied(jobId: String, professionalId: String): Result<Boolean> = try {
         val snapshot = firestore.collection("job_applications")
             .whereEqualTo("jobId", jobId)
-            .whereEqualTo("craftsmanId", professionalId) // Legacy field check
+            .whereEqualTo("professionalId", professionalId)
             .whereIn("statusString", listOf(
                 ApplicationStatus.PENDING.name,
                 ApplicationStatus.ACCEPTED.name

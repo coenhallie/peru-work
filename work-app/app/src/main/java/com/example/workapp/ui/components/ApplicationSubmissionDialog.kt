@@ -51,6 +51,7 @@ fun ApplicationSubmissionDialog(
         availability: String?
     ) -> Unit,
     isLoading: Boolean = false,
+    error: String? = null,
     modifier: Modifier = Modifier
 ) {
     var proposedPrice by remember { mutableStateOf("") }
@@ -242,6 +243,18 @@ fun ApplicationSubmissionDialog(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 24.dp)
             )
+
+            // Error message
+            if (error != null) {
+                Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
             
             // Action buttons at bottom
             Row(
