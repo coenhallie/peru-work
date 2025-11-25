@@ -119,7 +119,7 @@ class ApplicationViewModel @Inject constructor(
                     professionalProfileImage = userProfile.profileImageUrl,
                     professionalRating = userProfile.rating,
                     professionalExperience = userProfile.experience,
-                    professionalProfession = userProfile.craft,
+                    professionalProfession = userProfile.profession,
                     // Legacy fields for backward compatibility
                     // craftsmanId = currentUser.uid,
                     // craftsmanName = userProfile.name,

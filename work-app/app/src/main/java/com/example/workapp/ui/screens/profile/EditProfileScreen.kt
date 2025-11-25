@@ -90,7 +90,7 @@ fun EditProfileScreen(
     var name by remember { mutableStateOf(currentUser?.name ?: "") }
     var phone by remember { mutableStateOf(currentUser?.phone ?: "") }
     var location by remember { mutableStateOf(currentUser?.location ?: "") }
-    var craft by remember { mutableStateOf(currentUser?.craft ?: "") }
+    var craft by remember { mutableStateOf(currentUser?.profession ?: "") }
     var bio by remember { mutableStateOf(currentUser?.bio ?: "") }
     var hourlyRate by remember { mutableStateOf(currentUser?.hourlyRate?.toString() ?: "") }
     var availability by remember { mutableStateOf(currentUser?.availability ?: "") }
@@ -109,7 +109,7 @@ fun EditProfileScreen(
             name = user.name
             phone = user.phone
             location = user.location
-            craft = user.craft ?: ""
+            craft = user.profession ?: ""
             bio = user.bio ?: ""
             hourlyRate = user.hourlyRate?.toString() ?: ""
             availability = user.availability ?: ""

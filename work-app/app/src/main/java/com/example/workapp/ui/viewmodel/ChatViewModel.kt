@@ -137,9 +137,7 @@ class ChatViewModel @Inject constructor(
             val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
             
             val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
-            val senderName = if (role == "CLIENT") room.clientName else {
-                if (room.professionalName.isNotEmpty()) room.professionalName else room.craftsmanName
-            }
+            val senderName = if (currentUser.uid == room.clientId) room.clientName else room.professionalName
             
             val message = Message(
                 chatRoomId = chatRoomId,
@@ -174,9 +172,7 @@ class ChatViewModel @Inject constructor(
                         val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
                         
                         val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
-                        val senderName = if (role == "CLIENT") room.clientName else {
-                            if (room.professionalName.isNotEmpty()) room.professionalName else room.craftsmanName
-                        }
+                        val senderName = if (currentUser.uid == room.clientId) room.clientName else room.professionalName
                         
                         val message = Message(
                             chatRoomId = chatRoomId,

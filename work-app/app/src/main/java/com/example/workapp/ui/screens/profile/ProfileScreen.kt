@@ -163,10 +163,10 @@ fun ProfileScreen(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
 
-                        currentUser?.craft?.let { craft ->
+                        currentUser?.profession?.let { profession ->
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = craft,
+                                text = profession,
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                             )

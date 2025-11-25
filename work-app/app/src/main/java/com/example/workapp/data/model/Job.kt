@@ -15,9 +15,6 @@ data class Job(
     val clientRole: String = "CLIENT", // Role of the person who created the job
     val professionalId: String? = null,
     val professionalName: String? = null,
-    // Legacy fields
-    val craftsmanId: String? = null,
-    val craftsmanName: String? = null,
     
     val status: JobStatus = JobStatus.OPEN,
     val budget: Double? = null,
@@ -38,11 +35,11 @@ data class Job(
     // Helpers for backward compatibility
     @get:Exclude
     val assignedProfessionalId: String?
-        get() = professionalId ?: craftsmanId
+        get() = professionalId
         
     @get:Exclude
     val assignedProfessionalName: String?
-        get() = professionalName ?: craftsmanName
+        get() = professionalName
 
     fun toMap(): Map<String, Any?> = buildMap {
         put("id", id)

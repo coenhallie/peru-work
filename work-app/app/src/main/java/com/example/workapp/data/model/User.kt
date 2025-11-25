@@ -33,7 +33,6 @@ data class User(
     
     // Professional-specific fields
     val profession: String? = null, // Renamed from craft
-    val craft: String? = null, // Legacy field support
     val bio: String? = null,
     val experience: Int? = null,
     val rating: Double? = null,
@@ -61,7 +60,7 @@ data class User(
     // Helper to get profession from either new or legacy field
     @get:Exclude
     val currentProfession: String?
-        get() = profession ?: craft
+        get() = profession
 }
 
 enum class UserRole {

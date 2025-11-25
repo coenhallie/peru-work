@@ -61,7 +61,7 @@ class AuthRepository @Inject constructor(
         phone: String,
         location: String,
         role: UserRole,
-        craft: String? = null,
+        profession: String? = null,
         bio: String? = null,
         workDistance: Int? = null
     ): Result<User> = try {
@@ -77,7 +77,7 @@ class AuthRepository @Inject constructor(
             phone = phone,
             location = location,
             roleString = role.name,
-            craft = craft,
+            profession = profession,
             bio = bio,
             workDistance = workDistance,
             experience = if (role == UserRole.PROFESSIONAL) 0 else null,

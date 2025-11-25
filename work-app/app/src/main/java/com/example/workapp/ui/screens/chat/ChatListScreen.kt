@@ -153,16 +153,8 @@ fun ChatRoomItem(
 ) {
     // Determine which user info to show (the other person)
     val isClient = currentUserId == chatRoom.clientId
-    val otherUserName = if (isClient) {
-        if (chatRoom.professionalName.isNotEmpty()) chatRoom.professionalName else chatRoom.craftsmanName
-    } else {
-        chatRoom.clientName
-    }
-    val otherUserProfileImage = if (isClient) {
-        if (!chatRoom.professionalProfileImage.isNullOrEmpty()) chatRoom.professionalProfileImage else chatRoom.craftsmanProfileImage
-    } else {
-        chatRoom.clientProfileImage
-    }
+    val otherUserName = if (isClient) chatRoom.professionalName else chatRoom.clientName
+    val otherUserProfileImage = if (isClient) chatRoom.professionalProfileImage else chatRoom.clientProfileImage
     val unreadCount = if (isClient) chatRoom.unreadCountClient else chatRoom.unreadCountProfessional
 
     Card(

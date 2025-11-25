@@ -68,16 +68,12 @@ data class ChatRoom(
     val clientId: String = "",            // Client user ID
     val clientName: String = "",          // Client display name
     val clientProfileImage: String? = null,
-    val craftsmanId: String = "",         // Legacy: Craftsman user ID
-    val craftsmanName: String = "",       // Legacy: Craftsman display name
-    val craftsmanProfileImage: String? = null,
     val professionalId: String = "",      // Professional user ID
     val professionalName: String = "",    // Professional display name
     val professionalProfileImage: String? = null,
     val lastMessage: String? = null,      // Most recent message text
     val lastMessageTime: Long? = null,    // Timestamp of last message
     val unreadCountClient: Int = 0,       // Unread count for client
-    val unreadCountCraftsman: Int = 0,    // Legacy: Unread count for craftsman
     val unreadCountProfessional: Int = 0, // Unread count for professional
     val isActive: Boolean = true,         // Chat is active (job not completed/cancelled)
     val createdAt: Long = System.currentTimeMillis()
@@ -98,7 +94,6 @@ data class ChatRoom(
         put("lastMessage", lastMessage)
         put("lastMessageTime", lastMessageTime)
         put("unreadCountClient", unreadCountClient)
-        put("unreadCountCraftsman", unreadCountCraftsman)
         put("unreadCountProfessional", unreadCountProfessional)
         put("isActive", isActive)
         put("createdAt", createdAt)

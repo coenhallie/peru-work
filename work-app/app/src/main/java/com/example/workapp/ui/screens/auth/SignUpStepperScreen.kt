@@ -335,7 +335,7 @@ fun SignUpStepperScreen(
                                     phone = phone.trim(),
                                     location = location.trim(),
                                     role = selectedRole,
-                                    craft = if (selectedRole == UserRole.PROFESSIONAL) craft.trim() else null,
+                                    profession = if (selectedRole == UserRole.PROFESSIONAL) craft.trim() else null,
                                     bio = if (selectedRole == UserRole.PROFESSIONAL) bio.trim() else null,
                                     workDistance = if (selectedRole == UserRole.PROFESSIONAL) workDistance.roundToInt() else null,
                                     imageUri = imageUri,

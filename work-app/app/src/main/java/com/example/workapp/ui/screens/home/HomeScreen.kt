@@ -685,7 +685,7 @@ private fun ProfessionalCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = professional.craft ?: "Professional",
+                    text = professional.profession ?: "Professional",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )

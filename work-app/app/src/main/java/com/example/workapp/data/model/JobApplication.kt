@@ -27,8 +27,6 @@ data class JobApplication(
     val professionalProfession: String? = null,
     
     // Legacy fields
-    val craftsmanId: String = "",
-    val craftsmanName: String = "",
     val craftsmanProfileImage: String? = null,
     val craftsmanRating: Double? = null,
     val craftsmanExperience: Int? = null,
@@ -61,11 +59,11 @@ data class JobApplication(
     // Helpers for backward compatibility
     @get:Exclude
     val applicantId: String
-        get() = if (professionalId.isNotEmpty()) professionalId else craftsmanId
+        get() = professionalId
         
     @get:Exclude
     val applicantName: String
-        get() = if (professionalName.isNotEmpty()) professionalName else craftsmanName
+        get() = professionalName
 
     @get:Exclude
     val applicantProfileImage: String?
