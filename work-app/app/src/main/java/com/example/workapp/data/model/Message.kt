@@ -51,7 +51,8 @@ data class Message(
 enum class MessageType {
     TEXT,       // Regular text message
     IMAGE,      // Image attachment
-    SYSTEM      // Automated system messages (e.g., "Application accepted")
+    SYSTEM,     // Automated system messages (e.g., "Application accepted")
+    JOB_OFFER   // Job offer sent within chat
 }
 
 /**

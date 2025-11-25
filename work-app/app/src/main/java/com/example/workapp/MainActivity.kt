@@ -237,7 +237,8 @@ fun WorkAppNavHost(
     ) { innerPadding ->
         NavGraph(
             navController = navController,
-            authViewModel = authViewModel
+            authViewModel = authViewModel,
+            paddingValues = innerPadding
         )
     }
 }

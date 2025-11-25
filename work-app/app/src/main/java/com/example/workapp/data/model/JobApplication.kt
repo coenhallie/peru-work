@@ -38,6 +38,9 @@ data class JobApplication(
     val coverLetter: String? = null,
     val availability: String? = null,
     
+    // Chat integration
+    val chatRoomId: String? = null,
+    
     // Status tracking
     val statusString: String = ApplicationStatus.PENDING.name,
     val appliedAt: Long = System.currentTimeMillis(),
@@ -100,6 +103,7 @@ data class JobApplication(
         put("estimatedDuration", estimatedDuration)
         put("coverLetter", coverLetter)
         put("availability", availability)
+        put("chatRoomId", chatRoomId)
         put("statusString", statusString)
         put("appliedAt", appliedAt)
         put("respondedAt", respondedAt)

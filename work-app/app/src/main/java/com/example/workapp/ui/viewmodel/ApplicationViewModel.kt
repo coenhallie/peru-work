@@ -77,7 +77,8 @@ class ApplicationViewModel @Inject constructor(
         proposedPrice: String?,
         estimatedDuration: String?,
         coverLetter: String?,
-        availability: String?
+        availability: String?,
+        chatRoomId: String? = null
     ) {
         viewModelScope.launch {
             _submitApplicationState.value = SubmitApplicationState.Loading
@@ -131,6 +132,7 @@ class ApplicationViewModel @Inject constructor(
                     estimatedDuration = estimatedDuration?.takeIf { it.isNotBlank() },
                     coverLetter = coverLetter?.takeIf { it.isNotBlank() },
                     availability = availability?.takeIf { it.isNotBlank() },
+                    chatRoomId = chatRoomId,
                     appliedAt = System.currentTimeMillis()
                 )
 

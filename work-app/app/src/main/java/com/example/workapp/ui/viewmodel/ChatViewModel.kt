@@ -14,6 +14,9 @@ import com.example.workapp.data.repository.ChatRepository
 import com.example.workapp.data.repository.AuthRepository
 import com.example.workapp.data.repository.CloudinaryRepository
 import com.example.workapp.data.repository.NotificationRepository
+import com.example.workapp.data.repository.JobRepository
+import com.example.workapp.data.model.Job
+import com.example.workapp.data.model.JobStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -27,7 +30,8 @@ class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
     private val cloudinaryRepository: CloudinaryRepository,
-    private val notificationRepository: NotificationRepository
+    private val notificationRepository: NotificationRepository,
+    private val jobRepository: JobRepository
 ) : ViewModel() {
 
     private val _chatRooms = MutableStateFlow<List<ChatRoom>>(emptyList())
@@ -35,6 +39,9 @@ class ChatViewModel @Inject constructor(
 
     private val _messages = MutableStateFlow<List<Message>>(emptyList())
     val messages: StateFlow<List<Message>> = _messages.asStateFlow()
+
+    private val _availableJobs = MutableStateFlow<List<Job>>(emptyList())
+    val availableJobs: StateFlow<List<Job>> = _availableJobs.asStateFlow()
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
@@ -198,6 +205,128 @@ class ChatViewModel @Inject constructor(
             }
         }
     }
+
+    /**
+     * Load open jobs for the current client
+     */
+    fun loadClientJobs() {
+        val currentUser = authRepository.currentUser ?: return
+        
+        viewModelScope.launch {
+            jobRepository.getJobsByClient(currentUser.uid)
+                .collect { jobs ->
+                    // Filter only OPEN jobs
+                    _availableJobs.value = jobs.filter { it.status == JobStatus.OPEN }
+                }
+        }
+    }
+
+    /**
+     * Send a job offer message
+     */
+    fun sendJobOffer(chatRoomId: String, job: Job) {
+        val currentUser = authRepository.currentUser ?: return
+
+        viewModelScope.launch {
+            // Determine sender details
+            val room = _chatRooms.value.find { it.id == chatRoomId } ?: return@launch
+            
+            val role = if (room.clientId == currentUser.uid) "CLIENT" else "PROFESSIONAL"
+            val senderName = if (currentUser.uid == room.clientId) room.clientName else room.professionalName
+            
+            val message = Message(
+                chatRoomId = chatRoomId,
+                senderId = currentUser.uid,
+                senderName = senderName,
+                senderRole = role,
+                message = "Job Offer: ${job.title}",
+                timestamp = System.currentTimeMillis(),
+                type = MessageType.JOB_OFFER.name,
+                metadata = mapOf(
+                    "jobId" to job.id,
+                    "jobTitle" to job.title,
+                    "jobBudget" to (job.budget?.toString() ?: "0"),
+                    "jobImage" to (job.imageUrl ?: job.images?.firstOrNull() ?: "")
+                )
+            )
+
+            chatRepository.sendMessage(chatRoomId, message)
+                .onFailure { e ->
+                    _error.value = "Failed to send job offer: ${e.message}"
+                }
+        }
+    }
+
+    /**
+     * Accept a job offer
+     */
+    fun acceptJobOffer(jobId: String, chatRoomId: String) {
+        val currentUser = authRepository.currentUser ?: return
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            try {
+                // 1. Assign professional to the job
+                jobRepository.assignProfessional(
+                    jobId = jobId,
+                    professionalId = currentUser.uid,
+                    professionalName = currentUser.displayName ?: "Professional"
+                ).onSuccess {
+                    // 2. Send system message confirming acceptance
+                    val room = _chatRooms.value.find { it.id == chatRoomId }
+                    val senderName = currentUser.displayName ?: "Professional"
+                    
+                    val message = Message(
+                        chatRoomId = chatRoomId,
+                        senderId = currentUser.uid,
+                        senderName = senderName,
+                        senderRole = "PROFESSIONAL",
+                        message = "I have accepted the job offer for this project.",
+                        timestamp = System.currentTimeMillis(),
+                        type = MessageType.SYSTEM.name
+                    )
+                    
+                    chatRepository.sendMessage(chatRoomId, message)
+                    
+                    // 3. Update job status in metadata of the offer message? 
+                    // Ideally we should update the message UI based on real job status, 
+                    // but for now the system message is enough confirmation.
+                    
+                    _isLoading.value = false
+                }.onFailure { e ->
+                    _error.value = "Failed to accept job: ${e.message}"
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _error.value = "Error accepting job: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Reject a job offer
+     */
+    fun rejectJobOffer(jobId: String, chatRoomId: String) {
+        val currentUser = authRepository.currentUser ?: return
+        
+        viewModelScope.launch {
+            // Send system message confirming rejection
+            val senderName = currentUser.displayName ?: "Professional"
+            
+            val message = Message(
+                chatRoomId = chatRoomId,
+                senderId = currentUser.uid,
+                senderName = senderName,
+                senderRole = "PROFESSIONAL",
+                message = "I have declined the job offer.",
+                timestamp = System.currentTimeMillis(),
+                type = MessageType.SYSTEM.name
+            )
+            
+            chatRepository.sendMessage(chatRoomId, message)
+        }
+    }
     
     fun clearError() {
         _error.value = null
@@ -277,6 +406,62 @@ class ChatViewModel @Inject constructor(
                 _error.value = "Failed to start chat: ${e.message}"
                 _startChatResult.value = StartChatResult.Error(e.message ?: "Unknown error")
                 _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Start a chat with a professional from an application
+     * Helper to construct User objects and call startChatWithProfessional
+     */
+    fun startChatWithProfessionalFromApplication(
+        professionalId: String,
+        professionalName: String,
+        professionalImage: String?,
+        initialMessage: String
+    ) {
+        val currentUser = authRepository.currentUser ?: return
+        
+        // We need to fetch the full user profile for the current user (client) to get their name and image
+        // For now, we'll use what we have in currentUser (FirebaseUser) which has displayName and photoUrl
+        // Ideally we should use the User model from our database
+        
+        viewModelScope.launch {
+            try {
+                // Construct Client User
+                // We try to get the full profile if possible, otherwise use FirebaseUser data
+                val clientUser = try {
+                    // This is a suspend function in AuthRepository? No, it returns a Flow or similar.
+                    // Let's just use the basic info we have or fetch it if needed.
+                    // For now, let's construct a User object from FirebaseUser
+                    User(
+                        id = currentUser.uid,
+                        name = currentUser.displayName ?: "Client",
+                        email = currentUser.email ?: "",
+                        profileImageUrl = currentUser.photoUrl?.toString(),
+                        roleString = "CLIENT"
+                    )
+                } catch (e: Exception) {
+                    User(
+                        id = currentUser.uid,
+                        name = "Client",
+                        email = "",
+                        roleString = "CLIENT"
+                    )
+                }
+                
+                // Construct Professional User
+                val professionalUser = User(
+                    id = professionalId,
+                    name = professionalName,
+                    email = "", // Not needed for chat creation
+                    profileImageUrl = professionalImage,
+                    roleString = "PROFESSIONAL"
+                )
+                
+                startChatWithProfessional(clientUser, professionalUser, initialMessage)
+            } catch (e: Exception) {
+                _error.value = "Failed to prepare chat: ${e.message}"
             }
         }
     }

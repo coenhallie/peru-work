@@ -218,27 +218,45 @@ class ApplicationRepository @Inject constructor(
             }
         }
         
-        // Create chat room for the accepted job
-        val chatRoomId = "job_$jobId"
-        val chatRoom = com.example.workapp.data.model.ChatRoom(
-            id = chatRoomId,
-            jobId = jobId,
-            jobTitle = acceptedApp.jobTitle,
-            clientId = acceptedApp.clientId,
-            clientName = acceptedApp.clientName,
-            // clientProfileImage = null, // We might need to fetch this if not in application
-            professionalId = professionalId,
-            professionalName = professionalName,
-            professionalProfileImage = acceptedApp.professionalProfileImage,
-            lastMessage = "Chat created",
-            lastMessageTime = System.currentTimeMillis(),
-            isActive = true
-        )
+        // Check if application has a linked chat room
+        val existingChatRoomId = acceptedApp.chatRoomId
+        val chatRoomId = if (!existingChatRoomId.isNullOrEmpty()) {
+            existingChatRoomId
+        } else {
+            "job_$jobId"
+        }
         
+        if (existingChatRoomId.isNullOrEmpty()) {
+            // Create NEW chat room for the accepted job (legacy behavior or direct application)
+            val chatRoom = com.example.workapp.data.model.ChatRoom(
+                id = chatRoomId,
+                jobId = jobId,
+                jobTitle = acceptedApp.jobTitle,
+                clientId = acceptedApp.clientId,
+                clientName = acceptedApp.clientName,
+                // clientProfileImage = null, // We might need to fetch this if not in application
+                professionalId = professionalId,
+                professionalName = professionalName,
+                professionalProfileImage = acceptedApp.professionalProfileImage,
+                lastMessage = "Chat created",
+                lastMessageTime = System.currentTimeMillis(),
+                isActive = true
+            )
+            
+            val chatRoomRef = firestore.collection("chat_rooms").document(chatRoomId)
+            batch.set(chatRoomRef, chatRoom.toMap())
+        } else {
+            // Update EXISTING chat room to link to the job
+            val chatRoomRef = firestore.collection("chat_rooms").document(chatRoomId)
+            batch.update(chatRoomRef, mapOf(
+                "jobId" to jobId,
+                "jobTitle" to acceptedApp.jobTitle,
+                "isActive" to true
+            ))
+        }
+        
+        // Add system message about acceptance
         val chatRoomRef = firestore.collection("chat_rooms").document(chatRoomId)
-        batch.set(chatRoomRef, chatRoom.toMap())
-        
-        // Add initial system message
         val messageRef = chatRoomRef.collection("messages").document()
         val systemMessage = com.example.workapp.data.model.Message(
             id = messageRef.id,

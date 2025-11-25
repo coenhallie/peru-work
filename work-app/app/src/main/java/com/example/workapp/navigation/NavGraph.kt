@@ -9,6 +9,8 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -62,8 +64,9 @@ sealed class Screen(val route: String) {
     object EditJob : Screen("edit_job/{jobId}") {
         fun createRoute(jobId: String) = "edit_job/$jobId"
     }
-    object JobDetail : Screen("job_detail/{jobId}") {
-        fun createRoute(jobId: String) = "job_detail/$jobId"
+    object JobDetail : Screen("job_detail/{jobId}?chatRoomId={chatRoomId}") {
+        fun createRoute(jobId: String, chatRoomId: String? = null) = 
+            if (chatRoomId != null) "job_detail/$jobId?chatRoomId=$chatRoomId" else "job_detail/$jobId"
     }
     object ApplicationsList : Screen("applications/{jobId}") {
         fun createRoute(jobId: String) = "applications/$jobId"
@@ -78,6 +81,7 @@ sealed class Screen(val route: String) {
 fun NavGraph(
     navController: NavHostController,
     authViewModel: AuthViewModel = hiltViewModel(),
+    paddingValues: androidx.compose.foundation.layout.PaddingValues = androidx.compose.foundation.layout.PaddingValues(0.dp),
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.authState.collectAsState()
@@ -305,10 +309,11 @@ fun NavGraph(
             ChatScreen(
                 chatRoomId = chatRoomId,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToJob = { jobId ->
-                    navController.navigate(Screen.JobDetail.createRoute(jobId))
+                onNavigateToJob = { jobId, chatRoomId ->
+                    navController.navigate(Screen.JobDetail.createRoute(jobId, chatRoomId))
                 },
-                authViewModel = authViewModel
+                authViewModel = authViewModel,
+                modifier = Modifier.padding(bottom = paddingValues.calculateBottomPadding())
             )
         }
 
@@ -387,10 +392,16 @@ fun NavGraph(
         composable(
             route = Screen.JobDetail.route,
             arguments = listOf(
-                navArgument("jobId") { type = NavType.StringType }
+                navArgument("jobId") { type = NavType.StringType },
+                navArgument("chatRoomId") { 
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
             )
         ) { backStackEntry ->
             val jobId = backStackEntry.arguments?.getString("jobId") ?: return@composable
+            val chatRoomId = backStackEntry.arguments?.getString("chatRoomId")
             val currentUser = (authState as? AuthState.Authenticated)?.user
             JobDetailScreen(
                 jobId = jobId,
@@ -399,7 +410,8 @@ fun NavGraph(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToApplications = { jobId ->
                     navController.navigate(Screen.ApplicationsList.createRoute(jobId))
-                }
+                },
+                chatRoomId = chatRoomId
             )
         }
 

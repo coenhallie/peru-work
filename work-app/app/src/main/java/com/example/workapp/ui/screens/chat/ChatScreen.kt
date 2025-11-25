@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +26,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.workapp.data.model.Message
 import com.example.workapp.data.model.MessageType
+import com.example.workapp.data.model.Job
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.ui.viewmodel.ChatViewModel
@@ -36,14 +38,16 @@ import java.util.*
 fun ChatScreen(
     chatRoomId: String,
     onNavigateBack: () -> Unit,
-    onNavigateToJob: (String) -> Unit,
+    onNavigateToJob: (String, String?) -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
-    authViewModel: AuthViewModel
+    authViewModel: AuthViewModel,
+    modifier: Modifier = Modifier
 ) {
     val messages by viewModel.messages.collectAsState()
     val chatRooms by viewModel.chatRooms.collectAsState()
     val currentUser by authViewModel.currentUser.collectAsState()
     val isUploading by viewModel.isUploading.collectAsState()
+    val availableJobs by viewModel.availableJobs.collectAsState()
     
     // Find current chat room to display title
     val currentRoom = chatRooms.find { it.id == chatRoomId }
@@ -51,6 +55,7 @@ fun ChatScreen(
     val otherUserName = if (isClient) currentRoom?.professionalName else currentRoom?.clientName
     
     var messageText by remember { mutableStateOf("") }
+    var showJobSheet by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
     
     // Image picker launcher
@@ -64,6 +69,9 @@ fun ChatScreen(
 
     LaunchedEffect(chatRoomId) {
         viewModel.loadMessages(chatRoomId)
+        if (isClient) {
+            viewModel.loadClientJobs()
+        }
     }
 
     // Scroll to bottom when new messages arrive
@@ -74,6 +82,7 @@ fun ChatScreen(
     }
 
     Scaffold(
+        modifier = modifier,
         topBar = {
             TopAppBar(
                 title = { 
@@ -98,7 +107,7 @@ fun ChatScreen(
                 },
                 actions = {
                     if (currentRoom != null && currentRoom.jobId.isNotEmpty()) {
-                        TextButton(onClick = { onNavigateToJob(currentRoom.jobId) }) {
+                        TextButton(onClick = { onNavigateToJob(currentRoom.jobId, chatRoomId) }) {
                             Text("View Job")
                         }
                     }
@@ -122,7 +131,8 @@ fun ChatScreen(
                 onAttachImage = {
                     imagePickerLauncher.launch("image/*")
                 },
-                isUploading = isUploading
+                isUploading = isUploading,
+                onAttachJob = if (isClient) { { showJobSheet = true } } else null
             )
         }
     ) { paddingValues ->
@@ -139,9 +149,24 @@ fun ChatScreen(
             items(messages) { message ->
                 MessageBubble(
                     message = message,
-                    isCurrentUser = message.senderId == currentUser?.id
+                    isCurrentUser = message.senderId == currentUser?.id,
+                    onAcceptJob = { jobId -> viewModel.acceptJobOffer(jobId, chatRoomId) },
+                    onRejectJob = { jobId -> viewModel.rejectJobOffer(jobId, chatRoomId) },
+                    isProfessional = !isClient,
+                    onViewJob = { jobId -> onNavigateToJob(jobId, chatRoomId) }
                 )
             }
+        }
+        
+        if (showJobSheet) {
+            JobSelectionBottomSheet(
+                jobs = availableJobs,
+                onJobSelected = { job ->
+                    viewModel.sendJobOffer(chatRoomId, job)
+                    showJobSheet = false
+                },
+                onDismiss = { showJobSheet = false }
+            )
         }
     }
 }
@@ -149,10 +174,26 @@ fun ChatScreen(
 @Composable
 fun MessageBubble(
     message: Message,
-    isCurrentUser: Boolean
+    isCurrentUser: Boolean,
+    onAcceptJob: (String) -> Unit = {},
+    onRejectJob: (String) -> Unit = {},
+    isProfessional: Boolean = false,
+    onViewJob: (String) -> Unit = {}
 ) {
     if (message.type == MessageType.SYSTEM.name) {
         SystemMessage(message.message)
+        return
+    }
+
+    if (message.type == MessageType.JOB_OFFER.name) {
+        JobOfferBubble(
+            message = message,
+            isCurrentUser = isCurrentUser,
+            onAccept = onAcceptJob,
+            onReject = onRejectJob,
+            isProfessional = isProfessional,
+            onViewJob = onViewJob
+        )
         return
     }
 
@@ -214,6 +255,179 @@ fun MessageBubble(
 }
 
 @Composable
+fun JobOfferBubble(
+    message: Message,
+    isCurrentUser: Boolean,
+    onAccept: (String) -> Unit,
+    onReject: (String) -> Unit,
+    isProfessional: Boolean,
+    onViewJob: (String) -> Unit = {}
+) {
+    val jobId = message.metadata?.get("jobId") ?: ""
+    val jobTitle = message.metadata?.get("jobTitle") ?: "Unknown Job"
+    // Budget removed as requested
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = if (isCurrentUser) Alignment.End else Alignment.Start
+    ) {
+        Surface(
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            shape = RoundedCornerShape(16.dp),
+            modifier = Modifier.widthIn(max = 300.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Job Offer",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Small photo placeholder or job icon
+                    val jobImage = message.metadata?.get("jobImage")
+                    
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        modifier = Modifier.size(48.dp)
+                    ) {
+                        if (!jobImage.isNullOrEmpty()) {
+                            AsyncImage(
+                                model = jobImage,
+                                contentDescription = "Job Image",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Default.Work,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    Text(
+                        text = jobTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Button(
+                    onClick = { onViewJob(jobId) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    )
+                ) {
+                    Text("View Job")
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = formatMessageTime(message.timestamp),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JobSelectionBottomSheet(
+    jobs: List<Job>,
+    onJobSelected: (Job) -> Unit,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Select a Job to Offer",
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            if (jobs.isEmpty()) {
+                Text(
+                    text = "No open jobs available.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            } else {
+                LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxHeight(0.5f)
+                ) {
+                    items(jobs) { job ->
+                        Card(
+                            onClick = { onJobSelected(job) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    // Job Image
+                                    val jobImage = job.imageUrl ?: job.images?.firstOrNull()
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = MaterialTheme.colorScheme.surfaceVariant,
+                                        modifier = Modifier.size(40.dp)
+                                    ) {
+                                        if (!jobImage.isNullOrEmpty()) {
+                                            AsyncImage(
+                                                model = jobImage,
+                                                contentDescription = null,
+                                                contentScale = ContentScale.Crop,
+                                                modifier = Modifier.fillMaxSize()
+                                            )
+                                        } else {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Work,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(20.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    
+                                    Text(
+                                        text = job.title,
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SystemMessage(text: String) {
     Box(
         modifier = Modifier
@@ -241,6 +455,7 @@ fun ChatInput(
     onValueChange: (String) -> Unit,
     onSend: () -> Unit,
     onAttachImage: () -> Unit,
+    onAttachJob: (() -> Unit)? = null,
     isUploading: Boolean = false
 ) {
     Surface(
@@ -248,7 +463,6 @@ fun ChatInput(
         tonalElevation = 3.dp,
         modifier = Modifier
             .fillMaxWidth()
-            .windowInsetsPadding(WindowInsets.navigationBars)
     ) {
         Row(
             modifier = Modifier
@@ -266,6 +480,19 @@ fun ChatInput(
                     contentDescription = "Attach image",
                     tint = MaterialTheme.colorScheme.primary
                 )
+            }
+            
+            if (onAttachJob != null) {
+                IconButton(
+                    onClick = onAttachJob,
+                    enabled = !isUploading
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Work,
+                        contentDescription = "Offer Job",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
             
             Spacer(modifier = Modifier.width(4.dp))

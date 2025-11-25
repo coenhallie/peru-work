@@ -91,7 +91,8 @@ fun JobDetailScreen(
     currentUserId: String?,
     isProfessional: Boolean,
     onNavigateBack: () -> Unit,
-    onNavigateToApplications: (String) -> Unit = {},
+    onNavigateToApplications: (String) -> Unit,
+    chatRoomId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: JobViewModel = hiltViewModel(),
     applicationViewModel: ApplicationViewModel = hiltViewModel()
@@ -164,18 +165,20 @@ fun JobDetailScreen(
                 showApplicationDialog = false
                 applicationViewModel.resetSubmitApplicationState()
             },
-            onSubmit = { proposedPrice, estimatedDuration, coverLetter, availability ->
+            onSubmit = { price, duration, coverLetter, availability ->
                 applicationViewModel.submitApplication(
-                    jobId = jobId,
+                    jobId = job!!.id,
                     jobTitle = job!!.title,
                     jobBudget = job!!.budget,
                     clientId = job!!.clientId,
                     clientName = job!!.clientName,
-                    proposedPrice = proposedPrice,
-                    estimatedDuration = estimatedDuration,
+                    proposedPrice = price,
+                    estimatedDuration = duration,
                     coverLetter = coverLetter,
-                    availability = availability
+                    availability = availability,
+                    chatRoomId = chatRoomId
                 )
+                showApplicationDialog = false
             },
             isLoading = submitApplicationState is SubmitApplicationState.Loading,
             error = errorMessage
@@ -289,6 +292,7 @@ fun JobDetailScreen(
                 applicationCount = job!!.applicationCount,
                 onApply = { showApplicationDialog = true },
                 onViewApplications = { onNavigateToApplications(jobId) },
+                chatRoomId = chatRoomId,
                 isMapVisible = isMapVisible,
                 onImageClick = { url -> selectedImageUrl = url },
                 modifier = Modifier.fillMaxSize()
@@ -311,6 +315,7 @@ private fun JobDetailContent(
     onViewApplications: () -> Unit,
     isMapVisible: Boolean,
     onImageClick: (String) -> Unit,
+    chatRoomId: String? = null,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()

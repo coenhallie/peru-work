@@ -73,17 +73,26 @@ fun ApplicationsListScreen(
     jobId: String,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ApplicationViewModel = hiltViewModel()
+    viewModel: ApplicationViewModel = hiltViewModel(),
+    chatViewModel: com.example.workapp.ui.viewmodel.ChatViewModel = hiltViewModel(),
+    onNavigateToChat: (String) -> Unit = {}
 ) {
     val applications by viewModel.jobApplications.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val acceptApplicationState by viewModel.acceptApplicationState.collectAsState()
     val rejectApplicationState by viewModel.rejectApplicationState.collectAsState()
+    val startChatResult by chatViewModel.startChatResult.collectAsState()
+    val isChatLoading by chatViewModel.isLoading.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var selectedApplicationId by remember { mutableStateOf<String?>(null) }
     var showActionSheet by remember { mutableStateOf(false) }
     var selectedActionType by remember { mutableStateOf(ApplicationActionType.ACCEPT) }
+    
+    // Chat Bottom Sheet State
+    var showChatSheet by remember { mutableStateOf(false) }
+    var chatMessage by remember { mutableStateOf("") }
+    var selectedProfessionalForChat by remember { mutableStateOf<JobApplication?>(null) }
 
     // Load applications when screen opens
     LaunchedEffect(jobId) {
@@ -130,10 +139,35 @@ fun ApplicationsListScreen(
     }
 
     // Clean up when leaving
+
+
+    // Handle chat start result
+    LaunchedEffect(startChatResult) {
+        when (startChatResult) {
+            is com.example.workapp.ui.viewmodel.StartChatResult.Success -> {
+                val chatRoomId = (startChatResult as com.example.workapp.ui.viewmodel.StartChatResult.Success).chatRoomId
+                chatViewModel.clearStartChatResult()
+                showChatSheet = false
+                chatMessage = ""
+                selectedProfessionalForChat = null
+                onNavigateToChat(chatRoomId)
+            }
+            is com.example.workapp.ui.viewmodel.StartChatResult.Error -> {
+                snackbarHostState.showSnackbar(
+                    (startChatResult as com.example.workapp.ui.viewmodel.StartChatResult.Error).message
+                )
+                chatViewModel.clearStartChatResult()
+            }
+            else -> {}
+        }
+    }
+
+    // Clean up when leaving
     DisposableEffect(Unit) {
         onDispose {
             viewModel.resetAcceptApplicationState()
             viewModel.resetRejectApplicationState()
+            chatViewModel.clearStartChatResult()
         }
     }
 
@@ -164,6 +198,84 @@ fun ApplicationsListScreen(
                     showActionSheet = false
                 }
             )
+        }
+
+    }
+
+    // Chat Bottom Sheet
+    if (showChatSheet && selectedProfessionalForChat != null) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { showChatSheet = false },
+            sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
+            containerColor = MaterialTheme.colorScheme.surface,
+            dragHandle = { androidx.compose.material3.BottomSheetDefaults.DragHandle() }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 48.dp) // Add padding for keyboard/navigation
+            ) {
+                Text(
+                    text = "Chat with ${selectedProfessionalForChat?.applicantName}",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                Text(
+                    text = "Send an introductory message to start the conversation.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                androidx.compose.material3.OutlinedTextField(
+                    value = chatMessage,
+                    onValueChange = { chatMessage = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    label = { Text("Message") },
+                    placeholder = { Text("Hi, I'm interested in your application...") },
+                    shape = RoundedCornerShape(12.dp)
+                )
+                
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Button(
+                    onClick = {
+                        selectedProfessionalForChat?.let { app ->
+                            // Call the ViewModel helper function to start the chat
+
+                            
+                            chatViewModel.startChatWithProfessionalFromApplication(
+                                professionalId = app.applicantId,
+                                professionalName = app.applicantName,
+                                professionalImage = app.applicantProfileImage,
+                                initialMessage = chatMessage
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = chatMessage.isNotBlank() && !isChatLoading,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (isChatLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Send Message")
+                    }
+                }
+            }
         }
     }
 
@@ -285,7 +397,13 @@ fun ApplicationsListScreen(
                             },
                             isLoading = acceptApplicationState is AcceptApplicationState.Loading ||
                                        (rejectApplicationState is RejectApplicationState.Loading &&
-                                        selectedApplicationId == application.id)
+                                        selectedApplicationId == application.id),
+                            onChat = {
+                                // Open bottom sheet instead of direct navigation
+                                selectedProfessionalForChat = application
+                                chatMessage = "" // Reset message
+                                showChatSheet = true
+                            }
                         )
                     }
                 }
@@ -303,6 +421,7 @@ private fun ApplicationCard(
     isJobFilled: Boolean,
     onAccept: () -> Unit,
     onReject: () -> Unit,
+    onChat: () -> Unit,
     isLoading: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -433,6 +552,24 @@ private fun ApplicationCard(
                         )
                     }
                 }
+                }
+
+            // Chat Button
+            OutlinedButton(
+                onClick = onChat,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(
+                    imageVector = AppIcons.Navigation.chat,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                val firstName = application.applicantName.split(" ").firstOrNull() ?: "Professional"
+                Text("Chat with $firstName")
             }
 
             Spacer(modifier = Modifier.height(16.dp))
