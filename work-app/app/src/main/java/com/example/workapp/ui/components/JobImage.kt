@@ -1,6 +1,7 @@
 package com.example.workapp.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -28,12 +29,17 @@ fun JobImage(
     imageUrl: String?,
     category: String,
     modifier: Modifier = Modifier,
-    contentScale: ContentScale = ContentScale.Crop
+    contentScale: ContentScale = ContentScale.Crop,
+    onClick: ((String) -> Unit)? = null
 ) {
     val displayImage = if (!imageUrl.isNullOrEmpty()) imageUrl else getMockImageForCategory(category)
     
     // Create a placeholder painter using the work icon
-    Box(modifier = modifier.background(MaterialTheme.colorScheme.surfaceVariant)) {
+    Box(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .then(if (onClick != null) Modifier.clickable { onClick(displayImage) } else Modifier)
+    ) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(displayImage)

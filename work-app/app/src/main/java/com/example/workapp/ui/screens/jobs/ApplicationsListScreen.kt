@@ -59,6 +59,7 @@ import com.example.workapp.ui.viewmodel.AcceptApplicationState
 import com.example.workapp.ui.viewmodel.ApplicationViewModel
 import com.example.workapp.ui.viewmodel.RejectApplicationState
 import com.example.workapp.ui.components.SkeletonApplicationReviewCard
+import com.example.workapp.ui.components.ApplicationActionType
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -81,8 +82,8 @@ fun ApplicationsListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     
     var selectedApplicationId by remember { mutableStateOf<String?>(null) }
-    var showAcceptDialog by remember { mutableStateOf(false) }
-    var showRejectDialog by remember { mutableStateOf(false) }
+    var showActionSheet by remember { mutableStateOf(false) }
+    var selectedActionType by remember { mutableStateOf(ApplicationActionType.ACCEPT) }
 
     // Load applications when screen opens
     LaunchedEffect(jobId) {
@@ -93,7 +94,7 @@ fun ApplicationsListScreen(
     LaunchedEffect(acceptApplicationState) {
         when (acceptApplicationState) {
             is AcceptApplicationState.Success -> {
-                snackbarHostState.showSnackbar("Application accepted! Job assigned to craftsman.")
+                snackbarHostState.showSnackbar("Application accepted! Job assigned to professional.")
                 viewModel.resetAcceptApplicationState()
                 // Reload to update the list with new statuses
                 viewModel.loadApplicationsForJob(jobId)
@@ -136,62 +137,31 @@ fun ApplicationsListScreen(
         }
     }
 
-    // Accept confirmation dialog
-    if (showAcceptDialog && selectedApplicationId != null) {
+    // Action Bottom Sheet
+    if (showActionSheet && selectedApplicationId != null) {
         val application = applications.find { it.id == selectedApplicationId }
         application?.let { app ->
-            AlertDialog(
-                onDismissRequest = { showAcceptDialog = false },
-                title = { Text("Accept Application") },
-                text = {
-                    Text("Accept ${app.applicantName}'s application? This will assign the job to them and notify other applicants.")
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            viewModel.acceptApplication(
-                                applicationId = app.id,
-                                jobId = app.jobId,
-                                professionalId = app.applicantId,
-                                professionalName = app.applicantName
-                            )
-                            showAcceptDialog = false
-                        }
-                    ) {
-                        Text("Accept")
+            com.example.workapp.ui.components.ApplicationActionBottomSheet(
+                actionType = selectedActionType,
+                applicantName = app.applicantName,
+                onDismiss = { showActionSheet = false },
+                onConfirm = { message ->
+                    if (selectedActionType == ApplicationActionType.ACCEPT) {
+                        viewModel.acceptApplication(
+                            applicationId = app.id,
+                            jobId = app.jobId,
+                            professionalId = app.applicantId,
+                            professionalName = app.applicantName,
+                            professionalProfileImage = app.applicantProfileImage,
+                            introMessage = message
+                        )
+                    } else {
+                        viewModel.rejectApplication(
+                            applicationId = app.id,
+                            message = message
+                        )
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAcceptDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
-    }
-
-    // Reject confirmation dialog
-    if (showRejectDialog && selectedApplicationId != null) {
-        val application = applications.find { it.id == selectedApplicationId }
-        application?.let { app ->
-            AlertDialog(
-                onDismissRequest = { showRejectDialog = false },
-                title = { Text("Reject Application") },
-                text = { Text("Reject ${app.applicantName}'s application?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            viewModel.rejectApplication(selectedApplicationId!!)
-                            showRejectDialog = false
-                        }
-                    ) {
-                        Text("Reject", color = MaterialTheme.colorScheme.error)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showRejectDialog = false }) {
-                        Text("Cancel")
-                    }
+                    showActionSheet = false
                 }
             )
         }
@@ -272,7 +242,7 @@ fun ApplicationsListScreen(
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
-                            text = "Check back later for craftsmen applications",
+                            text = "Check back later for professional applications",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
@@ -305,11 +275,13 @@ fun ApplicationsListScreen(
                             isJobFilled = isJobFilled,
                             onAccept = {
                                 selectedApplicationId = application.id
-                                showAcceptDialog = true
+                                selectedActionType = com.example.workapp.ui.components.ApplicationActionType.ACCEPT
+                                showActionSheet = true
                             },
                             onReject = {
                                 selectedApplicationId = application.id
-                                showRejectDialog = true
+                                selectedActionType = com.example.workapp.ui.components.ApplicationActionType.REJECT
+                                showActionSheet = true
                             },
                             isLoading = acceptApplicationState is AcceptApplicationState.Loading ||
                                        (rejectApplicationState is RejectApplicationState.Loading &&
@@ -349,13 +321,13 @@ private fun ApplicationCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Header: Craftsman Info + Status Badge
+            // Header: Professional Info + Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Craftsman Info (Left)
+                // Professional Info (Left)
                 Row(
                     modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.Top

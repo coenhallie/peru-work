@@ -22,7 +22,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -35,9 +34,18 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetState
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Button
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -86,6 +94,7 @@ fun JobsListScreen(
     onViewApplications: (String) -> Unit = {},
     currentUserId: String? = null,
     showMyJobs: Boolean = false,
+    showAvailableJobs: Boolean = false,
     isProfessional: Boolean = false
 ) {
     val openJobs by jobViewModel.openJobs.collectAsState()
@@ -94,19 +103,23 @@ fun JobsListScreen(
     val myApplications by applicationViewModel.myApplications.collectAsState()
     val deleteJobState by jobViewModel.deleteJobState.collectAsState()
     val isFiltering by jobViewModel.isFiltering.collectAsState()
+    val searchQuery by jobViewModel.searchQuery.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var jobToDelete by remember { mutableStateOf<String?>(null) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var selectedDistance by remember { mutableStateOf<Double?>(null) }
     var isRefreshing by remember { mutableStateOf(false) }
+    var showFilterSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val pullToRefreshState = rememberPullToRefreshState()
     
-    // Load applications if professional
-    LaunchedEffect(isProfessional) {
-        if (isProfessional) {
+    // Load applications if professional and NOT showing available jobs (i.e. showing "My Applications")
+    LaunchedEffect(isProfessional, showAvailableJobs) {
+        if (isProfessional && !showAvailableJobs) {
             applicationViewModel.loadMyApplications()
+            applicationViewModel.markApplicationsAsViewed()
         }
     }
 
@@ -153,7 +166,8 @@ fun JobsListScreen(
     }
 
     // Determine content mode
-    val showApplications = isProfessional && !showMyJobs
+    // Show applications only if professional, not showing my jobs (posted), and NOT showing available jobs (home)
+    val showApplications = isProfessional && !showMyJobs && !showAvailableJobs
     val jobsList = if (showMyJobs) myJobs else if (isFiltering) filteredJobs else openJobs
 
     Scaffold(
@@ -190,46 +204,54 @@ fun JobsListScreen(
                     )
                 )
                 
-                // Filter chips (only for available jobs view)
+
+                
+                // Search bar (only for available jobs view)
                 if (!showMyJobs && !showApplications) {
-                    LazyRow(
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { jobViewModel.searchJobs(it) },
+                        placeholder = { Text("Search jobs...") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = AppIcons.Actions.search,
+                                contentDescription = null,
+                                modifier = Modifier.size(IconSizes.medium)
+                            )
+                        },
+                        trailingIcon = {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { jobViewModel.searchJobs("") }) {
+                                    Icon(
+                                        imageVector = AppIcons.Actions.close,
+                                        contentDescription = "Clear search",
+                                        modifier = Modifier.size(IconSizes.medium)
+                                    )
+                                }
+                            } else {
+                                IconButton(onClick = { showFilterSheet = true }) {
+                                    Icon(
+                                        imageVector = AppIcons.Actions.filter,
+                                        contentDescription = "Filters",
+                                        modifier = Modifier.size(IconSizes.medium),
+                                        tint = if (selectedDistance != null) 
+                                            MaterialTheme.colorScheme.primary 
+                                        else 
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        },
+                        shape = MaterialTheme.shapes.large,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            FilterChip(
-                                selected = selectedDistance == null,
-                                onClick = {
-                                    selectedDistance = null
-                                    jobViewModel.clearFilters()
-                                },
-                                label = { Text("All Locations") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                        }
-                        
-                        val distances = listOf(5.0, 10.0, 20.0, 50.0)
-                        items(distances) { distance ->
-                            FilterChip(
-                                selected = selectedDistance == distance,
-                                onClick = {
-                                    selectedDistance = distance
-                                    jobViewModel.filterJobsByDistance(distance)
-                                },
-                                label = { Text("< ${distance.toInt()} km") },
-                                colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            )
-                        }
-                    }
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        singleLine = true
+                    )
                 }
+
+
+
             }
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -276,7 +298,12 @@ fun JobsListScreen(
                     skeletonContent = {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                top = 16.dp,
+                                end = 16.dp,
+                                bottom = 100.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(5) {
@@ -323,7 +350,12 @@ fun JobsListScreen(
                         // Jobs list
                         LazyColumn(
                             modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(16.dp),
+                            contentPadding = PaddingValues(
+                                start = 16.dp,
+                                top = 16.dp,
+                                end = 16.dp,
+                                bottom = 100.dp
+                            ),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(jobsList) { job ->
@@ -342,11 +374,130 @@ fun JobsListScreen(
                                     } else null,
                                     onViewApplications = if (isOwner && job.applicationCount > 0) {
                                         { onViewApplications(job.id) }
-                                    } else null
+                                    } else null,
+                                    showApplicationCount = isOwner
                                 )
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+
+    if (showFilterSheet) {
+        JobFilterBottomSheet(
+            currentDistance = selectedDistance,
+            onDistanceSelected = { distance ->
+                selectedDistance = distance
+                if (distance != null) {
+                    jobViewModel.filterJobsByDistance(distance)
+                } else {
+                    jobViewModel.clearFilters()
+                }
+            },
+            onDismiss = { showFilterSheet = false },
+            onClear = {
+                selectedDistance = null
+                jobViewModel.clearFilters()
+                showFilterSheet = false
+            },
+            sheetState = sheetState
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun JobFilterBottomSheet(
+    currentDistance: Double?,
+    onDistanceSelected: (Double?) -> Unit,
+    onDismiss: () -> Unit,
+    onClear: () -> Unit,
+    sheetState: SheetState
+) {
+    var tempDistance by remember { mutableStateOf(currentDistance ?: 50.0) }
+    var isDistanceEnabled by remember { mutableStateOf(currentDistance != null) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Filters",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                TextButton(onClick = onClear) {
+                    Text("Clear All")
+                }
+            }
+
+            HorizontalDivider()
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                // Distance Filter
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Distance",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Switch(
+                        checked = isDistanceEnabled,
+                        onCheckedChange = { isDistanceEnabled = it }
+                    )
+                }
+                
+                if (isDistanceEnabled) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Within ${tempDistance.toInt()} km",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Slider(
+                        value = tempDistance.toFloat(),
+                        onValueChange = { tempDistance = it.toDouble() },
+                        valueRange = 1f..100f,
+                        steps = 99
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                // Apply Button
+                Button(
+                    onClick = {
+                        onDistanceSelected(if (isDistanceEnabled) tempDistance else null)
+                        onDismiss()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large
+                ) {
+                    Text("Apply Filters")
                 }
             }
         }
@@ -396,7 +547,12 @@ private fun ProfessionalApplicationsList(
     } else {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 16.dp,
+                end = 16.dp,
+                bottom = 100.dp
+            ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(applications) { application ->
@@ -583,7 +739,8 @@ private fun JobCard(
     modifier: Modifier = Modifier,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
-    onViewApplications: (() -> Unit)? = null
+    onViewApplications: (() -> Unit)? = null,
+    showApplicationCount: Boolean = false
 ) {
     Card(
         onClick = onClick,
@@ -612,7 +769,7 @@ private fun JobCard(
                 )
                 
                 // Application Badge
-                if (job.applicationCount > 0 && job.status == JobStatus.OPEN) {
+                if (showApplicationCount && job.applicationCount > 0 && job.status == JobStatus.OPEN) {
                     Surface(
                         color = MaterialTheme.colorScheme.error,
                         shape = MaterialTheme.shapes.extraSmall,

@@ -25,6 +25,7 @@ import com.example.workapp.ui.theme.WorkAppTheme
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.ui.viewmodel.ChatViewModel
 import com.example.workapp.ui.viewmodel.JobViewModel
+import com.example.workapp.ui.viewmodel.ApplicationViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import android.Manifest
 import android.content.pm.PackageManager
@@ -156,6 +157,7 @@ fun WorkAppNavHost(
     authViewModel: AuthViewModel = hiltViewModel(),
     chatViewModel: ChatViewModel = hiltViewModel(),
     jobViewModel: JobViewModel = hiltViewModel(),
+    applicationViewModel: ApplicationViewModel = hiltViewModel(),
     notificationRoute: String? = null,
     onNotificationHandled: () -> Unit = {}
 ) {
@@ -165,6 +167,7 @@ fun WorkAppNavHost(
     val currentUser by authViewModel.currentUser.collectAsState()
     val chatRooms by chatViewModel.chatRooms.collectAsState()
     val totalApplicationCount by jobViewModel.totalApplicationCount.collectAsState()
+    val professionalUnreadCount by applicationViewModel.unreadUpdateCount.collectAsState()
     
     val totalUnreadCount = androidx.compose.runtime.remember(chatRooms, currentUser) {
         if (currentUser == null) 0
@@ -177,11 +180,16 @@ fun WorkAppNavHost(
     // Sync FCM token when user logs in
     androidx.compose.runtime.LaunchedEffect(currentUser) {
         if (currentUser != null) {
-            FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val token = task.result
                     authViewModel.updateFCMToken(token)
                 }
+            }
+            
+            // Load applications for professional to show badge
+            if (currentUser!!.isProfessional()) {
+                applicationViewModel.loadMyApplications()
             }
         }
     }
@@ -205,7 +213,7 @@ fun WorkAppNavHost(
                         navController.navigate(destination.route) {
                             // Always pop up to Home as the root of the bottom navigation.
                             // This guarantees that when navigating from the Create Job
-                            // screen back to Search, the craftsman Home screen becomes
+                            // screen back to Search, the professional Home screen becomes
                             // the active content.
                             popUpTo(Screen.Home.route) {
                                 saveState = true
@@ -219,7 +227,8 @@ fun WorkAppNavHost(
                     },
                     currentUser = currentUser,
                     unreadMessageCount = totalUnreadCount,
-                    applicationCount = totalApplicationCount
+                    applicationCount = totalApplicationCount,
+                    professionalUnreadCount = professionalUnreadCount
                 )
             }
         },

@@ -111,7 +111,8 @@ class AuthRepository @Inject constructor(
             .await()
 
         android.util.Log.d("AuthRepository", "Fetched user profile: ${userDoc.data}")
-        val user = userDoc.toObject(User::class.java) ?: throw Exception("User profile not found")
+        val user = userDoc.toObject(User::class.java)?.copy(id = userDoc.id)
+            ?: throw Exception("User profile not found")
 
         Result.success(user)
     } catch (e: Exception) {
@@ -147,7 +148,8 @@ class AuthRepository @Inject constructor(
 
         if (userDoc.exists()) {
             // Existing user - return their profile
-            val user = userDoc.toObject(User::class.java) ?: throw Exception("User profile not found")
+            val user = userDoc.toObject(User::class.java)?.copy(id = userDoc.id)
+                ?: throw Exception("User profile not found")
             Result.success(GoogleSignInResult.Success(user))
         } else {
             // New user - return NewUser result to trigger registration flow
@@ -224,7 +226,8 @@ class AuthRepository @Inject constructor(
             .get()
             .await()
 
-        val user = userDoc.toObject(User::class.java) ?: throw Exception("User profile not found")
+        val user = userDoc.toObject(User::class.java)?.copy(id = userDoc.id)
+            ?: throw Exception("User profile not found")
 
         Result.success(user)
     } catch (e: Exception) {

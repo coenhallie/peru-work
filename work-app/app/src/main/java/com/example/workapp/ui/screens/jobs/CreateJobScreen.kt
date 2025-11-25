@@ -291,7 +291,7 @@ fun CreateJobScreen(
                 value = jobDescription,
                 onValueChange = { jobDescription = it },
                 label = { Text("Job Description*") },
-                placeholder = { Text("Describe your project in detail:\n\n• What needs to be done? (e.g., renovate 15m² kitchen)\n• What is the purpose/goal? (e.g., modernize for better functionality)\n• Specific requirements? (e.g., materials, timeline, budget expectations)\n• Current condition and any special considerations?\n\nMore details help craftsmen provide accurate proposals.") },
+                placeholder = { Text("Describe your project in detail:\n\n• What needs to be done? (e.g., renovate 15m² kitchen)\n• What is the purpose/goal? (e.g., modernize for better functionality)\n• Specific requirements? (e.g., materials, timeline, budget expectations)\n• Current condition and any special considerations?\n\nMore details help professionals provide accurate proposals.") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),

@@ -117,7 +117,7 @@ fun SignUpStepperScreen(
     var availability by remember { mutableStateOf("") }
     var workDistance by remember { mutableStateOf(10f) } // Default 10km
     
-    // Previous jobs state for craftsmen
+    // Previous jobs state for professionals
     var previousJobsList by remember { mutableStateOf<List<PreviousJobItem>>(emptyList()) }
 
     // Email validation state
@@ -1000,7 +1000,7 @@ fun AvailabilityStep(
     onAvailabilityChange: (String) -> Unit
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     
     val availabilityOptions = listOf(
         "Weekdays (9 AM - 5 PM)",

@@ -47,7 +47,7 @@ fun JobCategorySelector(
     modifier: Modifier = Modifier
 ) {
     var showBottomSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val categories = jobCategories
 
     Box(modifier = modifier) {

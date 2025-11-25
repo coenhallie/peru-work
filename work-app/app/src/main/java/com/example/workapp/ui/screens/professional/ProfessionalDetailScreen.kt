@@ -8,8 +8,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -17,6 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -26,10 +30,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,9 +57,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.workapp.data.model.User
 import com.example.workapp.data.repository.ProfessionalRepository
+import com.example.workapp.ui.components.FullScreenImageViewer
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.theme.StarYellow
+import com.example.workapp.ui.viewmodel.AuthState
+import com.example.workapp.ui.viewmodel.AuthViewModel
+import com.example.workapp.ui.viewmodel.ChatViewModel
+import com.example.workapp.ui.viewmodel.StartChatResult
 import kotlinx.coroutines.launch
 
 /**
@@ -58,12 +75,45 @@ import kotlinx.coroutines.launch
 fun ProfessionalDetailScreen(
     professionalId: String,
     onNavigateBack: () -> Unit,
-    repository: ProfessionalRepository = hiltViewModel<ProfessionalDetailViewModel>().repository
+    onNavigateToChat: (String) -> Unit,
+    repository: ProfessionalRepository = hiltViewModel<ProfessionalDetailViewModel>().repository,
+    authViewModel: AuthViewModel = hiltViewModel(),
+    chatViewModel: ChatViewModel = hiltViewModel()
 ) {
     var professional by remember { mutableStateOf<User?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // Bottom Sheet state
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var initialMessage by remember { mutableStateOf("") }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+
+    // Auth state
+    val authState by authViewModel.authState.collectAsState()
+    val currentUser = (authState as? AuthState.Authenticated)?.user
+    
+    // Chat state
+    val startChatResult by chatViewModel.startChatResult.collectAsState()
+    val isChatLoading by chatViewModel.isLoading.collectAsState()
+    
+    // Handle chat result
+    LaunchedEffect(startChatResult) {
+        when (val result = startChatResult) {
+            is StartChatResult.Success -> {
+                chatViewModel.clearStartChatResult()
+                onNavigateToChat(result.chatRoomId)
+            }
+            is StartChatResult.Error -> {
+                snackbarHostState.showSnackbar(result.message)
+                chatViewModel.clearStartChatResult()
+            }
+            null -> { /* No result yet */ }
+        }
+    }
 
     LaunchedEffect(professionalId) {
         scope.launch {
@@ -77,6 +127,14 @@ fun ProfessionalDetailScreen(
                     isLoading = false
                 }
         }
+    }
+
+    // Full Screen Image Viewer
+    if (selectedImageUrl != null) {
+        FullScreenImageViewer(
+            imageUrl = selectedImageUrl!!,
+            onDismiss = { selectedImageUrl = null }
+        )
     }
 
     Scaffold(
@@ -104,6 +162,7 @@ fun ProfessionalDetailScreen(
                 )
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         com.example.workapp.ui.components.FadeInLoadingContent(
@@ -128,8 +187,98 @@ fun ProfessionalDetailScreen(
             } else if (professional != null) {
                 ProfessionalDetailContent(
                     professional = professional!!,
+                    currentUser = currentUser,
+                    isRequestingService = isChatLoading,
+                    onRequestService = {
+                        showBottomSheet = true
+                    },
+                    onImageClick = { url -> selectedImageUrl = url },
                     modifier = Modifier.fillMaxSize()
                 )
+                
+                if (showBottomSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showBottomSheet = false },
+                        sheetState = sheetState
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .navigationBarsPadding() // Add padding for navigation bar
+                                .imePadding() // Add padding for keyboard
+                        ) {
+                            Text(
+                                text = "Request Service",
+                                style = MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Start a conversation with ${professional?.name} to discuss your project.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            OutlinedTextField(
+                                value = initialMessage,
+                                onValueChange = { initialMessage = it },
+                                label = { Text("Message (Optional)") },
+                                placeholder = { Text("Hi, I'm interested in your services...") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(150.dp),
+                                shape = MaterialTheme.shapes.medium,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                    disabledContainerColor = MaterialTheme.colorScheme.surface,
+                                )
+                            )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(
+                                    onClick = { showBottomSheet = false }
+                                ) {
+                                    Text("Cancel")
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Button(
+                                    onClick = {
+                                        if (currentUser != null && professional != null) {
+                                            chatViewModel.startChatWithProfessional(currentUser, professional!!, initialMessage)
+                                            showBottomSheet = false
+                                            initialMessage = "" // Reset message
+                                        }
+                                    },
+                                    enabled = !isChatLoading
+                                ) {
+                                    if (isChatLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = MaterialTheme.colorScheme.onPrimary,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                    }
+                                    Text("Send Request")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -138,6 +287,10 @@ fun ProfessionalDetailScreen(
 @Composable
 private fun ProfessionalDetailContent(
     professional: User,
+    currentUser: User?,
+    isRequestingService: Boolean,
+    onRequestService: () -> Unit,
+    onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -167,7 +320,10 @@ private fun ProfessionalDetailContent(
                     contentDescription = "${professional.name} profile",
                     modifier = Modifier
                         .size(120.dp)
-                        .clip(CircleShape),
+                        .clip(CircleShape)
+                        .clickable {
+                            (professional.profileImageUrl ?: "https://via.placeholder.com/200").let(onImageClick)
+                        },
                     contentScale = ContentScale.Crop
                 )
 
@@ -342,7 +498,8 @@ private fun ProfessionalDetailContent(
                                             contentDescription = "Project photo",
                                             modifier = Modifier
                                                 .size(120.dp)
-                                                .clip(MaterialTheme.shapes.medium),
+                                                .clip(MaterialTheme.shapes.medium)
+                                                .clickable { onImageClick(url) },
                                             contentScale = ContentScale.Crop
                                         )
                                     }
@@ -400,19 +557,44 @@ private fun ProfessionalDetailContent(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Book Button
-        Button(
-            onClick = { /* TODO: Implement booking */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
+        // Request Service Button - only show for clients (non-professionals)
+        // and not when viewing own profile
+        if (currentUser != null &&
+            !currentUser.isProfessional() &&
+            currentUser.id != professional.id
         ) {
-            Text(
-                text = "Request Service",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontWeight = FontWeight.SemiBold
+            Button(
+                onClick = onRequestService,
+                enabled = !isRequestingService,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
                 )
-            )
+            ) {
+                if (isRequestingService) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        strokeWidth = 2.dp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Icon(
+                    imageVector = AppIcons.Navigation.chat,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isRequestingService) "Starting Chat..." else "Request Service",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.SemiBold
+                    )
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(16.dp))

@@ -326,6 +326,9 @@ class ApplicationRepository @Inject constructor(
             priority = NotificationPriority.NORMAL
         )
         
+        // Update job's application count
+        updateJobApplicationCount(application.jobId)
+        
         Result.success(Unit)
     } catch (e: Exception) {
         Result.failure(e)

@@ -244,7 +244,7 @@ fun WelcomeScreen(
                         )
                         
                         Text(
-                            text = "Connect instantly with trusted, high‑rated craftsmen for any task.",
+                            text = "Connect instantly with trusted, high‑rated professionals for any task.",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,

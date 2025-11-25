@@ -60,6 +60,11 @@ class JobViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private var currentDistanceFilter: Double? = null
+
     // Track active job subscriptions to cancel them on sign out
     private var openJobsSubscription: CoroutineJob? = null
     private var myJobsSubscription: CoroutineJob? = null
@@ -204,7 +209,7 @@ class JobViewModel @Inject constructor(
     }
 
     /**
-     * Load all open jobs (for craftsmen)
+     * Load all open jobs (for professionals)
      */
     fun loadOpenJobs() {
         // Cancel existing subscription
@@ -214,13 +219,18 @@ class JobViewModel @Inject constructor(
             _isLoading.value = true
             jobRepository.getOpenJobs().collect { jobs ->
                 _openJobs.value = jobs
-                // Initially, filtered jobs are the same as open jobs
-                if (!_isFiltering.value) {
-                    _filteredJobs.value = jobs
-                }
+                applyFilters()
                 _isLoading.value = false
             }
         }
+    }
+
+    /**
+     * Search jobs by title or description
+     */
+    fun searchJobs(query: String) {
+        _searchQuery.value = query
+        applyFilters()
     }
 
     /**
@@ -228,41 +238,52 @@ class JobViewModel @Inject constructor(
      * @param maxDistanceKm Maximum distance in kilometers
      */
     fun filterJobsByDistance(maxDistanceKm: Double) {
+        currentDistanceFilter = maxDistanceKm
+        applyFilters()
+    }
+
+    private fun applyFilters() {
         viewModelScope.launch {
-            _isFiltering.value = true
-            val currentUser = authRepository.currentUser
-            if (currentUser == null) {
-                _filteredJobs.value = emptyList()
-                return@launch
-            }
-
-            // Get user profile for location
-            val userProfileResult = authRepository.getCurrentUserProfile()
-            val userProfile = userProfileResult.getOrNull()
+            val query = _searchQuery.value
+            val distanceFilter = currentDistanceFilter
             
-            if (userProfile == null || userProfile.location.isBlank()) {
-                // If user has no location, we can't filter by distance
-                // For now, just show all jobs or maybe show a message
+            if (query.isBlank() && distanceFilter == null) {
+                _isFiltering.value = false
                 _filteredJobs.value = _openJobs.value
                 return@launch
             }
 
-            // Get user coordinates
-            val userCoords = locationRepository.getCoordinates(userProfile.location)
-            if (userCoords == null) {
-                _filteredJobs.value = _openJobs.value
-                return@launch
+            _isFiltering.value = true
+            var filteredList = _openJobs.value
+
+            // Apply search filter
+            if (query.isNotBlank()) {
+                filteredList = filteredList.filter { job ->
+                    job.title.contains(query, ignoreCase = true) ||
+                    job.description.contains(query, ignoreCase = true) ||
+                    job.category.contains(query, ignoreCase = true)
+                }
             }
 
-            // Filter jobs
-            val currentJobs = _openJobs.value
-            val filteredList = currentJobs.filter { job ->
-                if (job.location.isBlank()) return@filter false
-                
-                val jobCoords = locationRepository.getCoordinates(job.location) ?: return@filter false
-                val distance = locationRepository.calculateDistanceKm(userCoords, jobCoords)
-                
-                distance <= maxDistanceKm
+            // Apply distance filter
+            if (distanceFilter != null) {
+                val currentUser = authRepository.currentUser
+                if (currentUser != null) {
+                    val userProfileResult = authRepository.getCurrentUserProfile()
+                    val userProfile = userProfileResult.getOrNull()
+                    
+                    if (userProfile != null && userProfile.location.isNotBlank()) {
+                        val userCoords = locationRepository.getCoordinates(userProfile.location)
+                        if (userCoords != null) {
+                            filteredList = filteredList.filter { job ->
+                                if (job.location.isBlank()) return@filter false
+                                val jobCoords = locationRepository.getCoordinates(job.location) ?: return@filter false
+                                val distance = locationRepository.calculateDistanceKm(userCoords, jobCoords)
+                                distance <= distanceFilter
+                            }
+                        }
+                    }
+                }
             }
             
             _filteredJobs.value = filteredList
@@ -273,6 +294,8 @@ class JobViewModel @Inject constructor(
      * Clear filters
      */
     fun clearFilters() {
+        _searchQuery.value = ""
+        currentDistanceFilter = null
         _isFiltering.value = false
         _filteredJobs.value = _openJobs.value
     }
@@ -321,7 +344,7 @@ class JobViewModel @Inject constructor(
     }
 
     /**
-     * Accept a job (for craftsmen)
+     * Accept a job (for professionals)
      */
     fun acceptJob(jobId: String) {
         viewModelScope.launch {

@@ -179,7 +179,7 @@ fun SkeletonJobCard(
 }
 
 /**
- * Skeleton loader for a Craftsman Card
+ * Skeleton loader for a Professional Card
  */
 @Composable
 fun SkeletonProfessionalCard(
@@ -410,7 +410,7 @@ fun SkeletonJobDetail(
 }
 
 /**
- * Skeleton loader for Craftsman Detail Screen
+ * Skeleton loader for Professional Detail Screen
  */
 @Composable
 fun SkeletonProfessionalDetail(
@@ -616,7 +616,7 @@ fun SkeletonApplicationReviewCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Craftsman Header
+            // Professional Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically

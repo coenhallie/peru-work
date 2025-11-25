@@ -55,7 +55,7 @@ enum class MessageType {
 }
 
 /**
- * Chat room model representing a conversation between client and craftsman
+ * Chat room model representing a conversation between client and professional
  * One chat room per job assignment
  */
 data class ChatRoom(

@@ -182,7 +182,7 @@ private fun RegularUserHomeContent(
     onProfessionalClick: (String) -> Unit
 ) {
     var showFilterSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var isRefreshing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val pullToRefreshState = rememberPullToRefreshState()

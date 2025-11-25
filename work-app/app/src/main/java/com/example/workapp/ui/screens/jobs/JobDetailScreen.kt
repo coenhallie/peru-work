@@ -56,6 +56,7 @@ import kotlinx.coroutines.launch
 import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobStatus
 import com.example.workapp.ui.components.ApplicationSubmissionDialog
+import com.example.workapp.ui.components.FullScreenImageViewer
 import com.example.workapp.ui.components.JobImage
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
@@ -74,7 +75,12 @@ import androidx.compose.ui.graphics.toArgb
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.width
 /**
  * Screen displaying detailed job information
  */
@@ -98,6 +104,7 @@ fun JobDetailScreen(
     
     var showApplicationDialog by remember { mutableStateOf(false) }
     var isMapVisible by remember { mutableStateOf(true) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
     // Check application status when screen is opened
     LaunchedEffect(jobId, isProfessional) {
@@ -153,7 +160,7 @@ fun JobDetailScreen(
         ApplicationSubmissionDialog(
             jobTitle = job!!.title,
             jobBudget = job!!.budget,
-            onDismiss = { 
+            onDismiss = {
                 showApplicationDialog = false
                 applicationViewModel.resetSubmitApplicationState()
             },
@@ -172,6 +179,14 @@ fun JobDetailScreen(
             },
             isLoading = submitApplicationState is SubmitApplicationState.Loading,
             error = errorMessage
+        )
+    }
+
+    // Full Screen Image Viewer
+    if (selectedImageUrl != null) {
+        FullScreenImageViewer(
+            imageUrl = selectedImageUrl!!,
+            onDismiss = { selectedImageUrl = null }
         )
     }
 
@@ -275,6 +290,7 @@ fun JobDetailScreen(
                 onApply = { showApplicationDialog = true },
                 onViewApplications = { onNavigateToApplications(jobId) },
                 isMapVisible = isMapVisible,
+                onImageClick = { url -> selectedImageUrl = url },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -294,6 +310,7 @@ private fun JobDetailContent(
     onApply: () -> Unit,
     onViewApplications: () -> Unit,
     isMapVisible: Boolean,
+    onImageClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -301,14 +318,106 @@ private fun JobDetailContent(
     Column(
         modifier = modifier.verticalScroll(scrollState)
     ) {
-        // Job Image (always show, with fallback if needed)
-        JobImage(
-            imageUrl = job.imageUrl,
-            category = job.category,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(250.dp)
-        )
+
+
+        // Job Images Carousel
+        val images = remember(job) {
+            when {
+                !job.images.isNullOrEmpty() -> job.images
+                !job.imageUrl.isNullOrEmpty() -> listOf(job.imageUrl)
+                else -> emptyList()
+            }
+        }
+
+        if (images.isNotEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp)
+            ) {
+                val pagerState = rememberPagerState(pageCount = { images.size })
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize()
+                ) { page ->
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                // Calculate the absolute offset for the current page from the
+                                // scroll position. We use the absolute value which allows us to mirror
+                                // any effects for both directions
+                                val pageOffset = (
+                                    (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+                                )
+
+                                // Scale effect: shrink the image slightly as it moves away from center
+                                val scale = 1f - (0.15f * kotlin.math.abs(pageOffset))
+                                scaleX = scale
+                                scaleY = scale
+                            }
+                    ) {
+                        JobImage(
+                            imageUrl = images[page],
+                            category = job.category,
+                            modifier = Modifier.fillMaxSize(),
+                            onClick = onImageClick
+                        )
+                    }
+                }
+
+                // Page Indicator
+                if (images.size > 1) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 16.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(images.size) { iteration ->
+                            val isSelected = pagerState.currentPage == iteration
+                            val width by animateDpAsState(
+                                targetValue = if (isSelected) 16.dp else 6.dp,
+                                label = "indicatorWidth"
+                            )
+                            val color by animateColorAsState(
+                                targetValue = if (isSelected) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                                label = "indicatorColor"
+                            )
+                            
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(color)
+                                    .height(6.dp)
+                                    .width(width)
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            // Fallback for no images
+            JobImage(
+                imageUrl = null,
+                category = job.category,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(250.dp),
+                onClick = onImageClick
+            )
+        }
 
         // Job information
         Column(

@@ -4,7 +4,7 @@ import com.google.firebase.firestore.Exclude
 import com.google.firebase.firestore.IgnoreExtraProperties
 
 /**
- * Represents a previous job/project completed by a craftsman
+ * Represents a previous job/project completed by a professional
  */
 @IgnoreExtraProperties
 data class PreviousJob(

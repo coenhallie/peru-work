@@ -36,6 +36,7 @@ import java.util.*
 fun ChatScreen(
     chatRoomId: String,
     onNavigateBack: () -> Unit,
+    onNavigateToJob: (String) -> Unit,
     viewModel: ChatViewModel = hiltViewModel(),
     authViewModel: AuthViewModel
 ) {
@@ -97,6 +98,13 @@ fun ChatScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(AppIcons.Navigation.back, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    if (currentRoom != null && currentRoom.jobId.isNotEmpty()) {
+                        TextButton(onClick = { onNavigateToJob(currentRoom.jobId) }) {
+                            Text("View Job")
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

@@ -63,7 +63,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Screen displaying all applications submitted by the craftsman
+ * Screen displaying all applications submitted by the professional
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -272,7 +272,7 @@ fun MyApplicationsScreen(
 }
 
 /**
- * Card displaying application information for craftsman
+ * Card displaying application information for professional
  */
 @Composable
 private fun MyApplicationCard(

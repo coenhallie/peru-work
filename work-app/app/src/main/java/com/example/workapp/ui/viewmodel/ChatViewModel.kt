@@ -1,14 +1,19 @@
 package com.example.workapp.ui.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.workapp.data.model.ChatRoom
 import com.example.workapp.data.model.Message
 import com.example.workapp.data.model.MessageType
+import com.example.workapp.data.model.NotificationPriority
+import com.example.workapp.data.model.NotificationType
+import com.example.workapp.data.model.User
 import com.example.workapp.data.repository.ChatRepository
 import com.example.workapp.data.repository.AuthRepository
 import com.example.workapp.data.repository.CloudinaryRepository
+import com.example.workapp.data.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,7 +26,8 @@ import javax.inject.Inject
 class ChatViewModel @Inject constructor(
     private val chatRepository: ChatRepository,
     private val authRepository: AuthRepository,
-    private val cloudinaryRepository: CloudinaryRepository
+    private val cloudinaryRepository: CloudinaryRepository,
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _chatRooms = MutableStateFlow<List<ChatRoom>>(emptyList())
@@ -38,6 +44,9 @@ class ChatViewModel @Inject constructor(
 
     private val _isUploading = MutableStateFlow(false)
     val isUploading: StateFlow<Boolean> = _isUploading.asStateFlow()
+    
+    private val _startChatResult = MutableStateFlow<StartChatResult?>(null)
+    val startChatResult: StateFlow<StartChatResult?> = _startChatResult.asStateFlow()
 
     private var chatRoomsJob: kotlinx.coroutines.Job? = null
 
@@ -197,4 +206,101 @@ class ChatViewModel @Inject constructor(
     fun clearError() {
         _error.value = null
     }
+    
+    /**
+     * Start or continue a chat with a professional
+     * Creates a new chat room if one doesn't exist, or returns the existing one
+     * Also sends a notification to the professional
+     *
+     * @param currentUser The current logged-in user (client)
+     * @param professional The professional to start a chat with
+     */
+    fun startChatWithProfessional(currentUser: User, professional: User, initialMessage: String? = null) {
+        Log.d(TAG, "startChatWithProfessional called")
+        Log.d(TAG, "currentUser.id: ${currentUser.id}, currentUser.name: ${currentUser.name}")
+        Log.d(TAG, "professional.id: ${professional.id}, professional.name: ${professional.name}")
+        
+        viewModelScope.launch {
+            _isLoading.value = true
+            _startChatResult.value = null
+            
+            try {
+                chatRepository.getOrCreateDirectChat(currentUser, professional)
+                    .onSuccess { chatRoomId ->
+                        Log.d(TAG, "Chat room created/retrieved: $chatRoomId")
+                        
+                        // Check if this is a new chat room (no messages yet)
+                        val room = chatRepository.getChatRoom(chatRoomId).getOrNull()
+                        val isNewChat = room?.lastMessage == null
+                        
+                        Log.d(TAG, "isNewChat: $isNewChat")
+                        
+                        // Send initial message if provided
+                        if (!initialMessage.isNullOrBlank()) {
+                            sendMessage(chatRoomId, initialMessage)
+                        }
+                        
+                        if (isNewChat) {
+                            Log.d(TAG, "Creating notification for professional: ${professional.id}")
+                            // Send notification to the professional about new chat request
+                            notificationRepository.createNotification(
+                                userId = professional.id,
+                                type = NotificationType.NEW_MESSAGE,
+                                title = "New Service Request",
+                                message = if (!initialMessage.isNullOrBlank()) 
+                                    "${currentUser.name}: $initialMessage" 
+                                else 
+                                    "${currentUser.name} wants to discuss a service with you",
+                                data = mapOf(
+                                    "chatRoomId" to chatRoomId,
+                                    "senderId" to currentUser.id,
+                                    "senderName" to currentUser.name,
+                                    "type" to "SERVICE_REQUEST"
+                                ),
+                                actionUrl = "chat/$chatRoomId",
+                                imageUrl = currentUser.profileImageUrl,
+                                priority = NotificationPriority.HIGH
+                            ).onSuccess {
+                                Log.d(TAG, "Notification created successfully")
+                            }.onFailure { e ->
+                                Log.e(TAG, "Failed to create notification: ${e.message}", e)
+                            }
+                        }
+                        
+                        _startChatResult.value = StartChatResult.Success(chatRoomId)
+                        _isLoading.value = false
+                    }
+                    .onFailure { e ->
+                        Log.e(TAG, "Failed to create chat room: ${e.message}", e)
+                        _error.value = "Failed to start chat: ${e.message}"
+                        _startChatResult.value = StartChatResult.Error(e.message ?: "Unknown error")
+                        _isLoading.value = false
+                    }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception in startChatWithProfessional: ${e.message}", e)
+                _error.value = "Failed to start chat: ${e.message}"
+                _startChatResult.value = StartChatResult.Error(e.message ?: "Unknown error")
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Clear the start chat result after handling
+     */
+    fun clearStartChatResult() {
+        _startChatResult.value = null
+    }
+    
+    companion object {
+        private const val TAG = "ChatViewModel"
+    }
+}
+
+/**
+ * Result of starting a chat with a professional
+ */
+sealed class StartChatResult {
+    data class Success(val chatRoomId: String) : StartChatResult()
+    data class Error(val message: String) : StartChatResult()
 }

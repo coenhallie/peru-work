@@ -62,13 +62,14 @@ enum class NotificationType {
     APPLICATION_REJECTED,        // Professional: Their application was rejected
     APPLICATION_WITHDRAWN,       // Client: Professional withdrew their application
     
-    // Job lifecycle notifications 
+    // Job lifecycle notifications
     JOB_STARTED,                // Both: Job work has officially started
     JOB_COMPLETED,              // Both: Job marked as complete
     JOB_CANCELLED,              // Both: Job was cancelled
     
     // Messaging notifications
     NEW_MESSAGE,                // Both: New chat message received
+    NEW_CHAT,                   // Professional: Client started a new service request chat
     
     // System notifications
     PROFILE_VIEWED,             // Professional: Client viewed their profile

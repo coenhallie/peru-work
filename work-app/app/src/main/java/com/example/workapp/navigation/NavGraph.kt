@@ -1,14 +1,23 @@
 package com.example.workapp.navigation
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -72,11 +81,38 @@ fun NavGraph(
     modifier: Modifier = Modifier
 ) {
     val authState by authViewModel.authState.collectAsState()
-
+    
+    // Track if this is the initial load - we fade in once auth state is determined
+    var isInitialLoad by remember { mutableStateOf(true) }
+    var showContent by remember { mutableStateOf(false) }
+    
     // Determine start destination based on auth state
     val startDestination = when (authState) {
         is AuthState.Authenticated -> Screen.Home.route
+        is AuthState.Initial -> Screen.Home.route // Placeholder, won't be shown
         else -> Screen.Welcome.route
+    }
+    
+    // Show content with fade-in once auth state is determined (not Initial)
+    LaunchedEffect(authState) {
+        if (authState !is AuthState.Initial) {
+            showContent = true
+            isInitialLoad = false
+        }
+    }
+    
+    // Show a blank background while auth state is being determined
+    if (authState is AuthState.Initial) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background),
+            contentAlignment = Alignment.Center
+        ) {
+            // Optionally show a loading indicator here
+            // For now, just show the background color for a smooth transition
+        }
+        return
     }
 
     // Define bottom navigation routes
@@ -91,51 +127,84 @@ fun NavGraph(
         Screen.ChatList.route
     )
 
-    NavHost(
-        navController = navController,
-        startDestination = startDestination,
-        modifier = modifier,
-        enterTransition = {
-            if (initialState.destination.route in bottomNavRoutes && targetState.destination.route in bottomNavRoutes) {
-                fadeIn(animationSpec = tween(300))
-            } else {
-                slideInHorizontally(
-                    initialOffsetX = { 1000 },
-                    animationSpec = tween(300)
-                )
-            }
-        },
-        exitTransition = {
-            if (initialState.destination.route in bottomNavRoutes && targetState.destination.route in bottomNavRoutes) {
-                fadeOut(animationSpec = tween(300))
-            } else {
-                slideOutHorizontally(
-                    targetOffsetX = { -1000 },
-                    animationSpec = tween(300)
-                )
-            }
-        },
-        popEnterTransition = {
-            if (initialState.destination.route in bottomNavRoutes && targetState.destination.route in bottomNavRoutes) {
-                fadeIn(animationSpec = tween(300))
-            } else {
-                slideInHorizontally(
-                    initialOffsetX = { -1000 },
-                    animationSpec = tween(300)
-                )
-            }
-        },
-        popExitTransition = {
-            if (initialState.destination.route in bottomNavRoutes && targetState.destination.route in bottomNavRoutes) {
-                fadeOut(animationSpec = tween(300))
-            } else {
-                slideOutHorizontally(
-                    targetOffsetX = { 1000 },
-                    animationSpec = tween(300)
-                )
-            }
-        }
+    // Fade in the entire NavHost for smooth initial appearance
+    AnimatedVisibility(
+        visible = showContent,
+        enter = fadeIn(animationSpec = tween(300))
     ) {
+        NavHost(
+            navController = navController,
+            startDestination = startDestination,
+            modifier = modifier,
+            enterTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                
+                // Use fade for:
+                // 1. Initial app launch (no previous route or same as target - initial composition)
+                // 2. Navigation between bottom nav routes
+                val isInitialNavigation = initialRoute == null ||
+                    initialRoute == targetRoute ||
+                    initialRoute == startDestination && targetRoute == startDestination
+                val isBetweenBottomNavRoutes = initialRoute in bottomNavRoutes && targetRoute in bottomNavRoutes
+                
+                if (isInitialNavigation || isBetweenBottomNavRoutes) {
+                    fadeIn(animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(
+                        initialOffsetX = { 1000 },
+                        animationSpec = tween(300)
+                    )
+                }
+            },
+            exitTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                
+                val isInitialNavigation = initialRoute == null ||
+                    initialRoute == targetRoute
+                val isBetweenBottomNavRoutes = initialRoute in bottomNavRoutes && targetRoute in bottomNavRoutes
+                
+                if (isInitialNavigation || isBetweenBottomNavRoutes) {
+                    fadeOut(animationSpec = tween(300))
+                } else {
+                    slideOutHorizontally(
+                        targetOffsetX = { -1000 },
+                        animationSpec = tween(300)
+                    )
+                }
+            },
+            popEnterTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                
+                val isBetweenBottomNavRoutes = initialRoute in bottomNavRoutes && targetRoute in bottomNavRoutes
+                
+                if (isBetweenBottomNavRoutes) {
+                    fadeIn(animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(
+                        initialOffsetX = { -1000 },
+                        animationSpec = tween(300)
+                    )
+                }
+            },
+            popExitTransition = {
+                val initialRoute = initialState.destination.route
+                val targetRoute = targetState.destination.route
+                
+                val isBetweenBottomNavRoutes = initialRoute in bottomNavRoutes && targetRoute in bottomNavRoutes
+                
+                if (isBetweenBottomNavRoutes) {
+                    fadeOut(animationSpec = tween(300))
+                } else {
+                    slideOutHorizontally(
+                        targetOffsetX = { 1000 },
+                        animationSpec = tween(300)
+                    )
+                }
+            }
+        ) {
         composable(Screen.Welcome.route) {
             WelcomeScreen(
                 viewModel = authViewModel,
@@ -148,21 +217,44 @@ fun NavGraph(
         }
 
         composable(Screen.Home.route) {
-            HomeScreen(
-                authViewModel = authViewModel,
-                onProfessionalClick = { professionalId ->
-                    navController.navigate(Screen.ProfessionalDetail.createRoute(professionalId))
-                },
-                onJobClick = { jobId ->
-                    navController.navigate(Screen.JobDetail.createRoute(jobId))
-                }
-            )
+            val currentUser = (authState as? AuthState.Authenticated)?.user
+            val isProfessional = currentUser?.isProfessional() == true
+            
+            if (isProfessional) {
+                // For professionals, Home is the "Available Jobs" page
+                JobsListScreen(
+                    onJobClick = { jobId ->
+                        navController.navigate(Screen.JobDetail.createRoute(jobId))
+                    },
+                    onEditJob = { jobId ->
+                        navController.navigate(Screen.EditJob.createRoute(jobId))
+                    },
+                    onViewApplications = { jobId ->
+                        navController.navigate(Screen.ApplicationsList.createRoute(jobId))
+                    },
+                    currentUserId = currentUser?.id,
+                    showMyJobs = false,
+                    showAvailableJobs = true,
+                    isProfessional = true
+                )
+            } else {
+                // For clients, Home is the "Find a professional" page
+                HomeScreen(
+                    authViewModel = authViewModel,
+                    onProfessionalClick = { professionalId ->
+                        navController.navigate(Screen.ProfessionalDetail.createRoute(professionalId))
+                    },
+                    onJobClick = { jobId ->
+                        navController.navigate(Screen.JobDetail.createRoute(jobId))
+                    }
+                )
+            }
         }
 
         composable(Screen.CreateJob.route) {
             CreateJobScreen(
                 onJobCreated = {
-                    navController.navigate(Screen.JobsList.route) {
+                    navController.navigate(Screen.MyJobs.route) {
                         popUpTo(Screen.CreateJob.route) { inclusive = true }
                     }
                 }
@@ -213,6 +305,9 @@ fun NavGraph(
             ChatScreen(
                 chatRoomId = chatRoomId,
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToJob = { jobId ->
+                    navController.navigate(Screen.JobDetail.createRoute(jobId))
+                },
                 authViewModel = authViewModel
             )
         }
@@ -281,7 +376,11 @@ fun NavGraph(
             val professionalId = backStackEntry.arguments?.getString("professionalId") ?: return@composable
             ProfessionalDetailScreen(
                 professionalId = professionalId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToChat = { chatRoomId ->
+                    navController.navigate(Screen.ChatRoom.createRoute(chatRoomId))
+                },
+                authViewModel = authViewModel
             )
         }
 
@@ -324,6 +423,7 @@ fun NavGraph(
                     navController.navigate(Screen.JobDetail.createRoute(jobId))
                 }
             )
+        }
         }
     }
 }

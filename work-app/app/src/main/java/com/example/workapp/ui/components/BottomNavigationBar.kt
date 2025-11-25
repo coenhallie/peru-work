@@ -36,7 +36,7 @@ sealed class BottomNavDestination(
     object Home : BottomNavDestination(
         route = "home",
         label = "Search",
-        contentDescription = "Search for craftsmen"
+        contentDescription = "Search for professionals"
     )
 
     object CreateJob : BottomNavDestination(
@@ -92,7 +92,8 @@ fun BottomNavigationBar(
     visible: Boolean = true,
     currentUser: User? = null,
     unreadMessageCount: Int = 0,
-    applicationCount: Int = 0
+    applicationCount: Int = 0,
+    professionalUnreadCount: Int = 0
 ) {
     // Create destinations based on user role
     // IMPORTANT: Professionals should NOT see the Create button
@@ -166,6 +167,23 @@ fun BottomNavigationBar(
                                     badge = {
                                         Badge {
                                             Text(text = applicationCount.toString())
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = AppIcons.getNavigationIcon(
+                                            route = destination.route,
+                                            selected = selected
+                                        ),
+                                        contentDescription = destination.contentDescription,
+                                        modifier = Modifier.size(IconSizes.medium)
+                                    )
+                                }
+                            } else if (destination is BottomNavDestination.Listings && destination.isProfessional && professionalUnreadCount > 0) {
+                                BadgedBox(
+                                    badge = {
+                                        Badge {
+                                            Text(text = professionalUnreadCount.toString())
                                         }
                                     }
                                 ) {

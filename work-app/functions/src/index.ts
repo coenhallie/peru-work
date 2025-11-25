@@ -145,8 +145,283 @@ export const onJobApplicationCreated = functions.firestore
   });
 
 /**
+ * Send push notification when a new chat room is created (service request)
+ * Triggers when a document is created in the chat_rooms collection
+ * This notifies the professional that a client wants to start a conversation
+ */
+export const onChatRoomCreated = functions.firestore
+  .document("chat_rooms/{chatRoomId}")
+  .onCreate(async (snapshot, context) => {
+    try {
+      const chatRoom = snapshot.data();
+      const chatRoomId = context.params.chatRoomId;
+
+      // Only send notification for direct messages (service requests)
+      // These have empty jobId and start with "direct_"
+      if (!chatRoomId.startsWith("direct_")) {
+        console.log("Not a direct chat room, skipping notification");
+        return;
+      }
+
+      const professionalId = chatRoom.professionalId;
+      const clientName = chatRoom.clientName || "A client";
+
+      if (!professionalId) {
+        console.error("No professional found for chat room:", chatRoomId);
+        return;
+      }
+
+      // Get professional's FCM token
+      const tokenDoc = await admin
+        .firestore()
+        .collection("fcm_tokens")
+        .doc(professionalId)
+        .get();
+
+      if (!tokenDoc.exists) {
+        console.log("No FCM token found for professional:", professionalId);
+        // Still create in-app notification even without FCM token
+      } else {
+        const token = tokenDoc.data()?.token;
+
+        if (token) {
+          // Send push notification
+          const message = {
+            token: token,
+            notification: {
+              title: "New Service Request",
+              body: `${clientName} wants to discuss a service with you`,
+            },
+            data: {
+              action: "NEW_CHAT",
+              chatRoomId: chatRoomId,
+              clientId: chatRoom.clientId || "",
+              clientName: clientName,
+              notificationId: Date.now().toString(),
+            },
+            android: {
+              priority: "high" as const,
+              notification: {
+                channelId: "service_requests",
+                sound: "default",
+                clickAction: "OPEN_CHAT",
+              },
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: "default",
+                  badge: 1,
+                  category: "NEW_CHAT",
+                },
+              },
+            },
+          };
+
+          try {
+            const response = await admin.messaging().send(message);
+            console.log(
+              "Successfully sent service request notification:",
+              response
+            );
+          } catch (error: any) {
+            console.error("Error sending push notification:", error);
+            // Clean up invalid tokens
+            if (
+              error.code === "messaging/invalid-registration-token" ||
+              error.code === "messaging/registration-token-not-registered"
+            ) {
+              await admin
+                .firestore()
+                .collection("fcm_tokens")
+                .doc(professionalId)
+                .delete();
+              console.log("Deleted invalid token for user:", professionalId);
+            }
+          }
+        }
+      }
+
+      // Create in-app notification
+      await admin.firestore().collection("notifications").add({
+        userId: professionalId,
+        type: "NEW_CHAT",
+        title: "New Service Request",
+        message: `${clientName} wants to discuss a service with you`,
+        data: {
+          chatRoomId: chatRoomId,
+          clientId: chatRoom.clientId || "",
+          clientName: clientName,
+        },
+        actionUrl: `chat/${chatRoomId}`,
+        imageUrl: chatRoom.clientProfileImage || null,
+        priority: "HIGH",
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      console.log("Created in-app notification for service request");
+    } catch (error: any) {
+      console.error("Error in onChatRoomCreated:", error);
+    }
+  });
+
+/**
+ * Send push notification when a new message is created in a chat room
+ * Triggers when a document is created in the chat_rooms/{chatRoomId}/messages subcollection
+ */
+export const onChatMessageCreated = functions.firestore
+  .document("chat_rooms/{chatRoomId}/messages/{messageId}")
+  .onCreate(async (snapshot, context) => {
+    try {
+      const message = snapshot.data();
+      const chatRoomId = context.params.chatRoomId;
+      const messageId = context.params.messageId;
+
+      const senderId = message.senderId;
+      const senderRole = message.senderRole;
+
+      // Get the chat room to find the recipient
+      const chatRoomDoc = await admin
+        .firestore()
+        .collection("chat_rooms")
+        .doc(chatRoomId)
+        .get();
+
+      if (!chatRoomDoc.exists) {
+        console.error("Chat room not found:", chatRoomId);
+        return;
+      }
+
+      const chatRoom = chatRoomDoc.data();
+
+      // Determine recipient based on sender role
+      let recipientId: string;
+      if (senderRole === "CLIENT") {
+        recipientId = chatRoom?.professionalId || chatRoom?.craftsmanId;
+      } else {
+        recipientId = chatRoom?.clientId;
+      }
+
+      if (!recipientId) {
+        console.error("No recipient found for message:", messageId);
+        return;
+      }
+
+      // Get recipient's FCM token
+      const tokenDoc = await admin
+        .firestore()
+        .collection("fcm_tokens")
+        .doc(recipientId)
+        .get();
+
+      if (!tokenDoc.exists) {
+        console.log("No FCM token found for recipient:", recipientId);
+        return;
+      }
+
+      const token = tokenDoc.data()?.token;
+
+      if (!token) {
+        console.error("Token data is invalid for recipient:", recipientId);
+        return;
+      }
+
+      // Send notification
+      const senderName = message.senderName || "Someone";
+      const messageText =
+        message.type === "IMAGE"
+          ? "Sent you an image"
+          : message.message?.substring(0, 100) || "Sent you a message";
+
+      const notificationMessage = {
+        token: token,
+        notification: {
+          title: `New message from ${senderName}`,
+          body: messageText,
+        },
+        data: {
+          action: "NEW_MESSAGE",
+          messageId: messageId,
+          chatRoomId: chatRoomId,
+          senderId: senderId,
+          notificationId: Date.now().toString(),
+        },
+        android: {
+          priority: "high" as const,
+          notification: {
+            channelId: "messages",
+            sound: "default",
+            clickAction: "OPEN_CHAT",
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              sound: "default",
+              badge: 1,
+              category: "NEW_MESSAGE",
+            },
+          },
+        },
+      };
+
+      const response = await admin.messaging().send(notificationMessage);
+      console.log("Successfully sent chat message notification:", response);
+
+      // Create in-app notification
+      await admin.firestore().collection("notifications").add({
+        userId: recipientId,
+        type: "NEW_MESSAGE",
+        title: `New message from ${senderName}`,
+        message: messageText,
+        data: {
+          messageId: messageId,
+          chatRoomId: chatRoomId,
+          senderId: senderId,
+        },
+        actionUrl: `chat/${chatRoomId}`,
+        priority: "NORMAL",
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    } catch (error: any) {
+      console.error("Error sending chat message notification:", error);
+
+      // Clean up invalid tokens
+      if (
+        error.code === "messaging/invalid-registration-token" ||
+        error.code === "messaging/registration-token-not-registered"
+      ) {
+        const chatRoomDoc = await admin
+          .firestore()
+          .collection("chat_rooms")
+          .doc(context.params.chatRoomId)
+          .get();
+
+        const chatRoom = chatRoomDoc.data();
+        const messageData = snapshot.data();
+        const recipientId =
+          messageData.senderRole === "CLIENT"
+            ? chatRoom?.professionalId
+            : chatRoom?.clientId;
+
+        if (recipientId) {
+          await admin
+            .firestore()
+            .collection("fcm_tokens")
+            .doc(recipientId)
+            .delete();
+          console.log("Deleted invalid token for user:", recipientId);
+        }
+      }
+    }
+  });
+
+/**
  * Send push notification when a new message is created
  * Triggers when a document is created in the messages collection
+ * @deprecated Use onChatMessageCreated for chat_rooms/{chatRoomId}/messages subcollection
  */
 export const onMessageCreated = functions.firestore
   .document("messages/{messageId}")

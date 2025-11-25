@@ -11,7 +11,11 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job as CoroutineJob
 import javax.inject.Inject
 
 /**
@@ -21,8 +25,13 @@ import javax.inject.Inject
 class ApplicationViewModel @Inject constructor(
     private val applicationRepository: ApplicationRepository,
     private val authRepository: AuthRepository,
-    private val jobRepository: JobRepository
+    private val jobRepository: JobRepository,
+    private val chatRepository: com.example.workapp.data.repository.ChatRepository,
+    private val preferencesRepository: com.example.workapp.data.repository.PreferencesRepository
 ) : ViewModel() {
+
+    private val _unreadUpdateCount = MutableStateFlow(0)
+    val unreadUpdateCount: StateFlow<Int> = _unreadUpdateCount.asStateFlow()
 
     private val _submitApplicationState = MutableStateFlow<SubmitApplicationState>(SubmitApplicationState.Idle)
     val submitApplicationState: StateFlow<SubmitApplicationState> = _submitApplicationState.asStateFlow()
@@ -54,6 +63,8 @@ class ApplicationViewModel @Inject constructor(
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
+    private var myApplicationsSubscription: CoroutineJob? = null
+
     /**
      * Submit a new job application
      */
@@ -78,7 +89,7 @@ class ApplicationViewModel @Inject constructor(
                     return@launch
                 }
 
-                // Get user profile to get craftsman details
+                // Get user profile to get professional details
                 val userProfile = authRepository.getCurrentUserProfile().getOrNull()
                 if (userProfile == null) {
                     _submitApplicationState.value = SubmitApplicationState.Error("Unable to get user profile")
@@ -184,16 +195,30 @@ class ApplicationViewModel @Inject constructor(
     }
 
     /**
-     * Load all applications submitted by current craftsman
+     * Load all applications submitted by current professional
      */
     fun loadMyApplications() {
-        viewModelScope.launch {
+        // Cancel existing subscription to avoid duplicates
+        myApplicationsSubscription?.cancel()
+
+        myApplicationsSubscription = viewModelScope.launch {
             _isLoading.value = true
             val currentUser = authRepository.currentUser
             if (currentUser != null) {
                 try {
                     applicationRepository.getApplicationsByProfessional(currentUser.uid).collect { applications ->
-                        _myApplications.value = applications
+                        // Verify job existence for each application
+                        val validApplications = coroutineScope {
+                            applications.map { application ->
+                                async {
+                                    val jobResult = jobRepository.getJobById(application.jobId)
+                                    if (jobResult.isSuccess) application else null
+                                }
+                            }.awaitAll().filterNotNull()
+                        }
+
+                        _myApplications.value = validApplications
+                        updateUnreadCount(validApplications)
                         _isLoading.value = false
                     }
                 } catch (e: Exception) {
@@ -206,7 +231,7 @@ class ApplicationViewModel @Inject constructor(
     }
     
     /**
-     * Load applications with their associated jobs for current craftsman
+     * Load applications with their associated jobs for current professional
      */
     fun loadMyApplicationsWithJobs() {
         viewModelScope.launch {
@@ -235,7 +260,7 @@ class ApplicationViewModel @Inject constructor(
     }
 
     /**
-     * Check if current craftsman has already applied to a job
+     * Check if current professional has already applied to a job
      */
     fun checkIfApplied(jobId: String) {
         viewModelScope.launch {
@@ -266,7 +291,9 @@ class ApplicationViewModel @Inject constructor(
         applicationId: String,
         jobId: String,
         professionalId: String,
-        professionalName: String
+        professionalName: String,
+        professionalProfileImage: String? = null,
+        introMessage: String? = null
     ) {
         viewModelScope.launch {
             _acceptApplicationState.value = AcceptApplicationState.Loading
@@ -281,6 +308,47 @@ class ApplicationViewModel @Inject constructor(
 
                 result.fold(
                     onSuccess = {
+                        // Create chat room for this job
+                        val currentUser = authRepository.currentUser
+                        val userProfile = authRepository.getCurrentUserProfile().getOrNull()
+                        
+                        if (currentUser != null && userProfile != null) {
+                            // Fetch job to get title
+                            val jobResult = jobRepository.getJobById(jobId)
+                            val jobTitle = jobResult.getOrNull()?.title ?: "Job Chat"
+                            
+                            val chatRoomId = "job_$jobId"
+                            val chatRoom = com.example.workapp.data.model.ChatRoom(
+                                id = chatRoomId,
+                                jobId = jobId,
+                                jobTitle = jobTitle,
+                                clientId = currentUser.uid,
+                                clientName = userProfile.name,
+                                clientProfileImage = userProfile.profileImageUrl,
+                                professionalId = professionalId,
+                                professionalName = professionalName,
+                                professionalProfileImage = professionalProfileImage,
+                                unreadCountProfessional = if (introMessage != null) 1 else 0,
+                                lastMessage = introMessage,
+                                lastMessageTime = if (introMessage != null) System.currentTimeMillis() else null
+                            )
+                            
+                            chatRepository.createChatRoom(chatRoom)
+                            
+                            // Send intro message if provided
+                            if (introMessage != null) {
+                                val message = com.example.workapp.data.model.Message(
+                                    chatRoomId = chatRoomId,
+                                    senderId = currentUser.uid,
+                                    senderName = userProfile.name,
+                                    senderRole = "CLIENT",
+                                    message = introMessage,
+                                    timestamp = System.currentTimeMillis()
+                                )
+                                chatRepository.sendMessage(chatRoomId, message)
+                            }
+                        }
+                        
                         _acceptApplicationState.value = AcceptApplicationState.Success
                     },
                     onFailure = { error ->
@@ -326,7 +394,7 @@ class ApplicationViewModel @Inject constructor(
     }
 
     /**
-     * Withdraw an application (for craftsmen)
+     * Withdraw an application (for professionals)
      */
     fun withdrawApplication(applicationId: String) {
         viewModelScope.launch {
@@ -386,6 +454,29 @@ class ApplicationViewModel @Inject constructor(
      */
     fun resetHasAppliedState() {
         _hasApplied.value = false
+    }
+
+    /**
+     * Update unread count based on last viewed time
+     */
+    private fun updateUnreadCount(applications: List<JobApplication>) {
+        val lastViewedTime = preferencesRepository.getLastViewedApplicationsTime()
+        val unreadCount = applications.count { application ->
+            val isUpdated = application.status == com.example.workapp.data.model.ApplicationStatus.ACCEPTED || 
+                           application.status == com.example.workapp.data.model.ApplicationStatus.REJECTED
+            val updateTime = application.respondedAt ?: 0L
+            isUpdated && updateTime > lastViewedTime
+        }
+        _unreadUpdateCount.value = unreadCount
+    }
+
+    /**
+     * Mark all applications as viewed
+     */
+    fun markApplicationsAsViewed() {
+        val currentTime = System.currentTimeMillis()
+        preferencesRepository.setLastViewedApplicationsTime(currentTime)
+        _unreadUpdateCount.value = 0
     }
 }
 
