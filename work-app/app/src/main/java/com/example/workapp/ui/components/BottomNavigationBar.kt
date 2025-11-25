@@ -33,10 +33,12 @@ sealed class BottomNavDestination(
     val label: String,
     val contentDescription: String
 ) {
-    object Home : BottomNavDestination(
+    data class Home(
+        val isProfessional: Boolean = false
+    ) : BottomNavDestination(
         route = "home",
-        label = "Search",
-        contentDescription = "Search for professionals"
+        label = if (isProfessional) "Explore" else "Search",
+        contentDescription = if (isProfessional) "Explore available jobs" else "Search for professionals"
     )
 
     object CreateJob : BottomNavDestination(
@@ -49,8 +51,8 @@ sealed class BottomNavDestination(
         val isProfessional: Boolean = false
     ) : BottomNavDestination(
         route = "my_jobs",
-        label = if (isProfessional) "Jobs" else "My Jobs",
-        contentDescription = if (isProfessional) "Browse available jobs" else "View and manage your job listings"
+        label = if (isProfessional) "Applied" else "Posted",
+        contentDescription = if (isProfessional) "View your job applications" else "View your posted jobs"
     )
 
     object Profile : BottomNavDestination(
@@ -107,7 +109,7 @@ fun BottomNavigationBar(
     val destinations = if (isProfessional || roleIsProfessional) {
         // Professional navigation: Home (Search), Jobs (My Applications), Chat, Profile
         listOf(
-            BottomNavDestination.Home,
+            BottomNavDestination.Home(isProfessional = true),
             BottomNavDestination.Listings(isProfessional = true),
             BottomNavDestination.Chat,
             BottomNavDestination.Profile
@@ -115,7 +117,7 @@ fun BottomNavigationBar(
     } else {
         // Client navigation: Home (Search), Create, My Jobs, Chat, Profile
         listOf(
-            BottomNavDestination.Home,
+            BottomNavDestination.Home(isProfessional = false),
             BottomNavDestination.CreateJob,
             BottomNavDestination.Listings(isProfessional = false),
             BottomNavDestination.Chat,
@@ -237,7 +239,7 @@ fun BottomNavigationBar(
  */
 fun shouldShowBottomBar(currentRoute: String?): Boolean {
     return when (currentRoute) {
-        "home", "profile", "create_job", "jobs_list", "my_jobs" -> true
+        "home", "profile", "create_job", "jobs_list", "my_jobs", "chat", "chat/{chatRoomId}" -> true
         else -> false
     }
 }

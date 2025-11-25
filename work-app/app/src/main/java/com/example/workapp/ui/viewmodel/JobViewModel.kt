@@ -9,6 +9,7 @@ import android.net.Uri
 import com.example.workapp.data.repository.AuthRepository
 import com.example.workapp.data.repository.JobRepository
 import com.example.workapp.data.repository.LocationRepository
+import com.example.workapp.data.repository.ApplicationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job as CoroutineJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,7 @@ class JobViewModel @Inject constructor(
     private val jobRepository: JobRepository,
     private val authRepository: AuthRepository,
     private val locationRepository: LocationRepository,
+    private val applicationRepository: ApplicationRepository,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -63,12 +65,19 @@ class JobViewModel @Inject constructor(
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
+    private val _appliedJobIds = MutableStateFlow<Set<String>>(emptySet())
+    val appliedJobIds: StateFlow<Set<String>> = _appliedJobIds.asStateFlow()
+
+    private val _hideAppliedJobs = MutableStateFlow(false)
+    val hideAppliedJobs: StateFlow<Boolean> = _hideAppliedJobs.asStateFlow()
+
     private var currentDistanceFilter: Double? = null
 
     // Track active job subscriptions to cancel them on sign out
     private var openJobsSubscription: CoroutineJob? = null
     private var myJobsSubscription: CoroutineJob? = null
     private var professionalJobsSubscription: CoroutineJob? = null
+    private var applicationsSubscription: CoroutineJob? = null
     private var currentUserId: String? = null
 
     init {
@@ -91,7 +100,9 @@ class JobViewModel @Inject constructor(
                         // User signed in, load their jobs
                         loadOpenJobs()
                         loadMyJobs()
+                        loadAppliedJobs()
                     }
+
                 }
             }
         }
@@ -106,10 +117,12 @@ class JobViewModel @Inject constructor(
         openJobsSubscription?.cancel()
         myJobsSubscription?.cancel()
         professionalJobsSubscription?.cancel()
+        applicationsSubscription?.cancel()
         
         // Clear data
         _openJobs.value = emptyList()
         _myJobs.value = emptyList()
+        _appliedJobIds.value = emptySet()
         _totalApplicationCount.value = 0
         _currentJob.value = null
         
@@ -242,12 +255,22 @@ class JobViewModel @Inject constructor(
         applyFilters()
     }
 
+    /**
+     * Toggle hiding jobs the user has already applied to
+     */
+    fun toggleHideAppliedJobs(hide: Boolean) {
+        _hideAppliedJobs.value = hide
+        applyFilters()
+    }
+
     private fun applyFilters() {
         viewModelScope.launch {
             val query = _searchQuery.value
             val distanceFilter = currentDistanceFilter
+            val hideApplied = _hideAppliedJobs.value
+            val appliedIds = _appliedJobIds.value
             
-            if (query.isBlank() && distanceFilter == null) {
+            if (query.isBlank() && distanceFilter == null && !hideApplied) {
                 _isFiltering.value = false
                 _filteredJobs.value = _openJobs.value
                 return@launch
@@ -286,6 +309,13 @@ class JobViewModel @Inject constructor(
                 }
             }
             
+            // Apply "hide applied" filter
+            if (hideApplied) {
+                filteredList = filteredList.filter { job ->
+                    !appliedIds.contains(job.id)
+                }
+            }
+            
             _filteredJobs.value = filteredList
         }
     }
@@ -296,6 +326,7 @@ class JobViewModel @Inject constructor(
     fun clearFilters() {
         _searchQuery.value = ""
         currentDistanceFilter = null
+        _hideAppliedJobs.value = false
         _isFiltering.value = false
         _filteredJobs.value = _openJobs.value
     }
@@ -339,6 +370,28 @@ class JobViewModel @Inject constructor(
                 }
             } else {
                 _myJobs.value = emptyList()
+            }
+        }
+    }
+
+    /**
+     * Load applications to track which jobs the user has applied to
+     */
+    private fun loadAppliedJobs() {
+        applicationsSubscription?.cancel()
+        
+        applicationsSubscription = viewModelScope.launch {
+            val currentUser = authRepository.currentUser
+            if (currentUser != null) {
+                applicationRepository.getApplicationsByProfessional(currentUser.uid).collect { applications ->
+                    _appliedJobIds.value = applications.map { it.jobId }.toSet()
+                    // Re-apply filters when applications change
+                    if (_isFiltering.value) {
+                        applyFilters()
+                    }
+                }
+            } else {
+                _appliedJobIds.value = emptySet()
             }
         }
     }

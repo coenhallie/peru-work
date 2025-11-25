@@ -104,6 +104,8 @@ fun JobsListScreen(
     val deleteJobState by jobViewModel.deleteJobState.collectAsState()
     val isFiltering by jobViewModel.isFiltering.collectAsState()
     val searchQuery by jobViewModel.searchQuery.collectAsState()
+    val appliedJobIds by jobViewModel.appliedJobIds.collectAsState()
+    val hideAppliedJobs by jobViewModel.hideAppliedJobs.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
     var jobToDelete by remember { mutableStateOf<String?>(null) }
@@ -234,7 +236,7 @@ fun JobsListScreen(
                                         imageVector = AppIcons.Actions.filter,
                                         contentDescription = "Filters",
                                         modifier = Modifier.size(IconSizes.medium),
-                                        tint = if (selectedDistance != null) 
+                                        tint = if (selectedDistance != null || hideAppliedJobs) 
                                             MaterialTheme.colorScheme.primary 
                                         else 
                                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -361,10 +363,12 @@ fun JobsListScreen(
                             items(jobsList) { job ->
                                 // Only show edit/delete buttons if the current user created this job
                                 val isOwner = currentUserId != null && currentUserId == job.clientId
+                                val isApplied = appliedJobIds.contains(job.id)
                                 
                                 JobCard(
                                     job = job,
                                     onClick = { onJobClick(job.id) },
+                                    isApplied = isApplied,
                                     onEdit = if (isOwner) { { onEditJob(job.id) } } else null,
                                     onDelete = if (isOwner) {
                                         {
@@ -389,6 +393,7 @@ fun JobsListScreen(
     if (showFilterSheet) {
         JobFilterBottomSheet(
             currentDistance = selectedDistance,
+            hideAppliedJobs = hideAppliedJobs,
             onDistanceSelected = { distance ->
                 selectedDistance = distance
                 if (distance != null) {
@@ -396,6 +401,9 @@ fun JobsListScreen(
                 } else {
                     jobViewModel.clearFilters()
                 }
+            },
+            onToggleHideAppliedJobs = { hide ->
+                jobViewModel.toggleHideAppliedJobs(hide)
             },
             onDismiss = { showFilterSheet = false },
             onClear = {
@@ -412,13 +420,16 @@ fun JobsListScreen(
 @Composable
 fun JobFilterBottomSheet(
     currentDistance: Double?,
+    hideAppliedJobs: Boolean,
     onDistanceSelected: (Double?) -> Unit,
+    onToggleHideAppliedJobs: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onClear: () -> Unit,
     sheetState: SheetState
 ) {
     var tempDistance by remember { mutableStateOf(currentDistance ?: 50.0) }
     var isDistanceEnabled by remember { mutableStateOf(currentDistance != null) }
+    var tempHideApplied by remember { mutableStateOf(hideAppliedJobs) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -486,12 +497,39 @@ fun JobFilterBottomSheet(
                     )
                 }
 
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+
+                // Hide Applied Jobs Filter
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Hide Applied Jobs",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Don't show jobs you've already applied to",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = tempHideApplied,
+                        onCheckedChange = { tempHideApplied = it }
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 // Apply Button
                 Button(
                     onClick = {
                         onDistanceSelected(if (isDistanceEnabled) tempDistance else null)
+                        onToggleHideAppliedJobs(tempHideApplied)
                         onDismiss()
                     },
                     modifier = Modifier.fillMaxWidth(),
@@ -737,6 +775,7 @@ private fun JobCard(
     job: Job,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    isApplied: Boolean = false,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null,
     onViewApplications: (() -> Unit)? = null,
@@ -783,6 +822,26 @@ private fun JobCard(
                                 fontWeight = FontWeight.Bold
                             ),
                             color = MaterialTheme.colorScheme.onError,
+                            modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
+                // Applied Badge
+                if (isApplied) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.extraSmall,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(4.dp)
+                    ) {
+                        Text(
+                            text = "Applied",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                         )
                     }
