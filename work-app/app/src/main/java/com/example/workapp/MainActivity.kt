@@ -1,7 +1,12 @@
 package com.example.workapp
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.viewModels
+import androidx.biometric.BiometricPrompt
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import com.example.workapp.ui.viewmodel.AuthState
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,7 +47,9 @@ import com.google.android.gms.tasks.OnCompleteListener
  * Integrates Material 3 bottom navigation with proper state management
  */
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
+    
+    private val authViewModel: AuthViewModel by viewModels()
     
     private var notificationRoute by mutableStateOf<String?>(null)
 
@@ -56,9 +63,20 @@ class MainActivity : ComponentActivity() {
         // Check for notification intent on launch
         notificationRoute = getNotificationRouteFromIntent(intent)
         
+        lifecycleScope.launch {
+            authViewModel.authState.collect { state ->
+                if (state is AuthState.WaitingForBiometric) {
+                    showBiometricPrompt {
+                        authViewModel.onBiometricSuccess()
+                    }
+                }
+            }
+        }
+        
         setContent {
             WorkAppTheme {
                 WorkAppNavHost(
+                    authViewModel = authViewModel,
                     notificationRoute = notificationRoute,
                     onNotificationHandled = { notificationRoute = null }
                 )
@@ -142,6 +160,33 @@ class MainActivity : ComponentActivity() {
             // Log and toast
             Log.d(TAG, "FCM Token: $token")
         })
+    }
+
+    private fun showBiometricPrompt(onSuccess: () -> Unit) {
+        val executor = ContextCompat.getMainExecutor(this)
+        val biometricPrompt = BiometricPrompt(this, executor,
+            object : BiometricPrompt.AuthenticationCallback() {
+                override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                    super.onAuthenticationSucceeded(result)
+                    onSuccess()
+                }
+
+                override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                    super.onAuthenticationError(errorCode, errString)
+                    Log.e(TAG, "Biometric error: $errString")
+                    // If error is permanent or user cancels, we might want to sign out or show a retry button.
+                    // For now, if they cancel, they stay on the blank screen.
+                    // Ideally we should show a UI with "Unlock" button.
+                }
+            })
+
+        val promptInfo = BiometricPrompt.PromptInfo.Builder()
+            .setTitle("Biometric Login")
+            .setSubtitle("Log in using your biometric credential")
+            .setNegativeButtonText("Cancel")
+            .build()
+
+        biometricPrompt.authenticate(promptInfo)
     }
 
     companion object {

@@ -55,7 +55,8 @@ class AuthViewModel @Inject constructor(
                     .onSuccess { user ->
                         _currentUser.value = user
                         _cachedUserRole.value = user.userRole
-                        _authState.value = AuthState.Authenticated(user)
+                        // Instead of going straight to Authenticated, we wait for biometric
+                        _authState.value = AuthState.WaitingForBiometric(user)
                     }
                     .onFailure { error ->
                         _authState.value = AuthState.Error(error.message ?: "Unknown error")
@@ -456,6 +457,16 @@ class AuthViewModel @Inject constructor(
                 }
         }
     }
+
+    fun onBiometricSuccess() {
+        val user = _currentUser.value
+        if (user != null) {
+            _authState.value = AuthState.Authenticated(user)
+        } else {
+            // Should not happen if we are in WaitingForBiometric, but safety check
+            checkAuthStatus()
+        }
+    }
 }
 
 sealed class AuthState {
@@ -466,6 +477,7 @@ sealed class AuthState {
     data class Error(val message: String) : AuthState()
     data object PasswordResetSent : AuthState()
     data class NeedsProfileCompletion(val firebaseUser: FirebaseUser) : AuthState()
+    data class WaitingForBiometric(val user: User) : AuthState()
 }
 
 sealed class EmailValidationState {

@@ -122,6 +122,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     
     // Compose
+    implementation("androidx.biometric:biometric:1.2.0-alpha05")
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation(platform("androidx.compose:compose-bom:2024.11.00"))

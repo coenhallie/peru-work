@@ -93,20 +93,20 @@ fun NavGraph(
     // Determine start destination based on auth state
     val startDestination = when (authState) {
         is AuthState.Authenticated -> Screen.Home.route
-        is AuthState.Initial -> Screen.Home.route // Placeholder, won't be shown
+        is AuthState.Initial, is AuthState.WaitingForBiometric -> Screen.Home.route // Placeholder
         else -> Screen.Welcome.route
     }
     
-    // Show content with fade-in once auth state is determined (not Initial)
+    // Show content with fade-in once auth state is determined (not Initial or WaitingForBiometric)
     LaunchedEffect(authState) {
-        if (authState !is AuthState.Initial) {
+        if (authState !is AuthState.Initial && authState !is AuthState.WaitingForBiometric) {
             showContent = true
             isInitialLoad = false
         }
     }
     
-    // Show a blank background while auth state is being determined
-    if (authState is AuthState.Initial) {
+    // Show a blank background while auth state is being determined or waiting for biometric
+    if (authState is AuthState.Initial || authState is AuthState.WaitingForBiometric) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
