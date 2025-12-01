@@ -421,6 +421,12 @@ class JobViewModel @Inject constructor(
             result.fold(
                 onSuccess = { job ->
                     _currentJob.value = job
+                    // Fetch coordinates for the job location
+                    if (job.location.isNotBlank()) {
+                        _jobCoordinates.value = locationRepository.getCoordinates(job.location)
+                    } else {
+                        _jobCoordinates.value = null
+                    }
                 },
                 onFailure = { error ->
                     // Handle error if needed
@@ -571,7 +577,11 @@ class JobViewModel @Inject constructor(
      */
     fun clearCurrentJob() {
         _currentJob.value = null
+        _jobCoordinates.value = null
     }
+
+    private val _jobCoordinates = MutableStateFlow<com.mapbox.geojson.Point?>(null)
+    val jobCoordinates: StateFlow<com.mapbox.geojson.Point?> = _jobCoordinates.asStateFlow()
 }
 
 /**

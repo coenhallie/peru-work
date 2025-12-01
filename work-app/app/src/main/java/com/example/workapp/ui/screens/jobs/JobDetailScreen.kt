@@ -55,7 +55,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobStatus
-import com.example.workapp.ui.components.ApplicationSubmissionDialog
+import com.example.workapp.ui.components.ApplicationSubmissionBottomSheet
 import com.example.workapp.ui.components.FullScreenImageViewer
 import com.example.workapp.ui.components.JobImage
 import com.example.workapp.ui.theme.AppIcons
@@ -98,12 +98,13 @@ fun JobDetailScreen(
     applicationViewModel: ApplicationViewModel = hiltViewModel()
 ) {
     val job by viewModel.currentJob.collectAsState()
+    val jobCoordinates by viewModel.jobCoordinates.collectAsState()
     val hasApplied by applicationViewModel.hasApplied.collectAsState()
     val submitApplicationState by applicationViewModel.submitApplicationState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     
-    var showApplicationDialog by remember { mutableStateOf(false) }
+    var showApplicationBottomSheet by remember { mutableStateOf(false) }
     var isMapVisible by remember { mutableStateOf(true) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
 
@@ -118,14 +119,14 @@ fun JobDetailScreen(
     LaunchedEffect(submitApplicationState) {
         when (submitApplicationState) {
             is SubmitApplicationState.Success -> {
-                showApplicationDialog = false
+                showApplicationBottomSheet = false
                 applicationViewModel.resetSubmitApplicationState()
                 applicationViewModel.checkIfApplied(jobId)
                 snackbarHostState.showSnackbar("Application submitted successfully!")
             }
             is SubmitApplicationState.Error -> {
                 // If dialog is not shown, show snackbar (fallback)
-                if (!showApplicationDialog) {
+                if (!showApplicationBottomSheet) {
                     snackbarHostState.showSnackbar(
                         (submitApplicationState as SubmitApplicationState.Error).message
                     )
@@ -154,15 +155,15 @@ fun JobDetailScreen(
         onNavigateBack()
     }
     
-    // Show application submission dialog
-    if (showApplicationDialog && job != null) {
+    // Show application submission bottom sheet
+    if (showApplicationBottomSheet && job != null) {
         val errorMessage = (submitApplicationState as? SubmitApplicationState.Error)?.message
         
-        ApplicationSubmissionDialog(
+        ApplicationSubmissionBottomSheet(
             jobTitle = job!!.title,
             jobBudget = job!!.budget,
             onDismiss = {
-                showApplicationDialog = false
+                showApplicationBottomSheet = false
                 applicationViewModel.resetSubmitApplicationState()
             },
             onSubmit = { price, duration, coverLetter, availability ->
@@ -178,7 +179,7 @@ fun JobDetailScreen(
                     availability = availability,
                     chatRoomId = chatRoomId
                 )
-                showApplicationDialog = false
+                showApplicationBottomSheet = false
             },
             isLoading = submitApplicationState is SubmitApplicationState.Loading,
             error = errorMessage
@@ -286,11 +287,12 @@ fun JobDetailScreen(
             // Job details content
             JobDetailContent(
                 job = job!!,
+                jobCoordinates = jobCoordinates,
                 currentUserId = currentUserId,
                 isProfessional = isProfessional,
                 hasApplied = hasApplied,
                 applicationCount = job!!.applicationCount,
-                onApply = { showApplicationDialog = true },
+                onApply = { showApplicationBottomSheet = true },
                 onViewApplications = { onNavigateToApplications(jobId) },
                 chatRoomId = chatRoomId,
                 isMapVisible = isMapVisible,
@@ -307,6 +309,7 @@ fun JobDetailScreen(
 @Composable
 private fun JobDetailContent(
     job: Job,
+    jobCoordinates: Point?,
     currentUserId: String?,
     isProfessional: Boolean,
     hasApplied: Boolean,
@@ -597,6 +600,7 @@ private fun JobDetailContent(
                     if (isMapVisible) {
                         LocationMapSection(
                             location = job.location,
+                            coordinates = jobCoordinates,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
@@ -767,15 +771,15 @@ private fun JobDetailContent(
 @Composable
 private fun LocationMapSection(
     location: String,
+    coordinates: Point?,
     modifier: Modifier = Modifier
 ) {
     // Check if Mapbox token is available
     val hasMapboxToken = BuildConfig.MAPBOX_PUBLIC_TOKEN.isNotEmpty()
     
     if (hasMapboxToken) {
-        // Default location (Lima, Peru) - replace with geocoded coordinates from location string
-        // In production, you would geocode the location string to get actual coordinates
-        val defaultLocation = Point.fromLngLat(-77.0428, -12.0464) // Lima, Peru (lng, lat)
+        // Use fetched coordinates or default to Lima, Peru
+        val mapLocation = coordinates ?: Point.fromLngLat(-77.0428, -12.0464) // Lima, Peru (lng, lat)
         
         // Capture colors in Composable context
         val markerColor = MaterialTheme.colorScheme.primary
@@ -783,9 +787,21 @@ private fun LocationMapSection(
         
         val mapViewportState = rememberMapViewportState {
             setCameraOptions {
-                center(defaultLocation)
+                center(mapLocation)
                 zoom(12.0)
                 pitch(0.0)
+            }
+        }
+        
+        // Update camera when coordinates change
+        LaunchedEffect(coordinates) {
+            if (coordinates != null) {
+                mapViewportState.flyTo(
+                    CameraOptions.Builder()
+                        .center(coordinates)
+                        .zoom(12.0)
+                        .build()
+                )
             }
         }
 
@@ -801,7 +817,7 @@ private fun LocationMapSection(
             ) {
                 // Add a circle annotation to mark the job location
                 CircleAnnotation(
-                    point = defaultLocation
+                    point = mapLocation
                 ) {
                     circleRadius = 10.0
                     circleColor = markerColor

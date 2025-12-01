@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ApplicationSubmissionDialog(
+fun ApplicationSubmissionBottomSheet(
     jobTitle: String,
     jobBudget: Double?,
     onDismiss: () -> Unit,
@@ -294,6 +294,9 @@ fun ApplicationSubmissionDialog(
                     Text("Submit")
                 }
             }
+            
+            // Bottom padding for safe area
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
