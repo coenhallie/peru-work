@@ -75,6 +75,8 @@ import com.mapbox.maps.extension.compose.style.MapStyle
 import com.example.workapp.BuildConfig
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -123,6 +125,8 @@ fun JobDetailScreen(
         }
     }
     
+    val successMessage = stringResource(R.string.application_submitted_success)
+
     // Handle application submission state
     LaunchedEffect(submitApplicationState) {
         when (submitApplicationState) {
@@ -130,7 +134,7 @@ fun JobDetailScreen(
                 showApplicationBottomSheet = false
                 applicationViewModel.resetSubmitApplicationState()
                 applicationViewModel.checkIfApplied(jobId)
-                snackbarHostState.showSnackbar("Application submitted successfully!")
+                snackbarHostState.showSnackbar(successMessage)
             }
             is SubmitApplicationState.Error -> {
                 // If dialog is not shown, show snackbar (fallback)
@@ -227,7 +231,7 @@ fun JobDetailScreen(
                 
                 if (isJobOwner) {
                     val isAccepted = job!!.status == JobStatus.ACCEPTED
-                    val fabText = if (isAccepted) "View Applications" else "Review (${job!!.applicationCount})"
+                    val fabText = if (isAccepted) stringResource(R.string.view_applications) else stringResource(R.string.review_applications_count, job!!.applicationCount)
                     
                     ExtendedFloatingActionButton(
                         onClick = { onNavigateToApplications(jobId) },
@@ -240,7 +244,7 @@ fun JobDetailScreen(
                     ) {
                         Icon(
                             imageVector = AppIcons.Content.person,
-                            contentDescription = if (isAccepted) "View Applications" else "Review Applications",
+                            contentDescription = if (isAccepted) stringResource(R.string.view_applications) else stringResource(R.string.review_applications),
                             modifier = Modifier.size(IconSizes.medium)
                         )
                         Spacer(modifier = Modifier.padding(4.dp))
@@ -256,12 +260,12 @@ fun JobDetailScreen(
         },
         topBar = {
             WorkAppTopBar(
-                title = "Job Details",
+                title = stringResource(R.string.job_details_title),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back"
+                            contentDescription = stringResource(R.string.back)
                         )
                     }
                 },
@@ -270,7 +274,7 @@ fun JobDetailScreen(
                         IconButton(onClick = { showMenu = !showMenu }) {
                             Icon(
                                 imageVector = AppIcons.Actions.moreVert,
-                                contentDescription = "More options"
+                                contentDescription = stringResource(R.string.more_options)
                             )
                         }
                         DropdownMenu(
@@ -278,7 +282,7 @@ fun JobDetailScreen(
                             onDismissRequest = { showMenu = false }
                         ) {
                             DropdownMenuItem(
-                                text = { Text("Edit Job") },
+                                text = { Text(stringResource(R.string.edit_job)) },
                                 onClick = {
                                     showMenu = false
                                     onEditJob(jobId)
@@ -291,7 +295,7 @@ fun JobDetailScreen(
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Delete Job", color = MaterialTheme.colorScheme.error) },
+                                text = { Text(stringResource(R.string.delete_job), color = MaterialTheme.colorScheme.error) },
                                 onClick = {
                                     showMenu = false
                                     showDeleteDialog = true
@@ -546,7 +550,7 @@ private fun JobDetailContent(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = "Description",
+                            text = stringResource(R.string.description_title),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -579,7 +583,7 @@ private fun JobDetailContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Job Details",
+                        text = stringResource(R.string.job_details_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -592,8 +596,8 @@ private fun JobDetailContent(
                     job.budget?.let { budget ->
                         DetailRow(
                             icon = AppIcons.Content.payment,
-                            label = "Budget",
-                            value = "PEN ${String.format("%.0f", budget)}",
+                            label = stringResource(R.string.budget_label),
+                            value = stringResource(R.string.currency_pen, String.format("%.0f", budget)),
                             valueColor = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -601,7 +605,7 @@ private fun JobDetailContent(
                     // Location
                     DetailRow(
                         icon = AppIcons.Content.location,
-                        label = "Location",
+                        label = stringResource(R.string.location),
                         value = job.location
                     )
                     
@@ -609,7 +613,7 @@ private fun JobDetailContent(
                     job.deadline?.let { deadline ->
                         DetailRow(
                             icon = AppIcons.Content.schedule,
-                            label = "Deadline",
+                            label = stringResource(R.string.deadline_label),
                             value = deadline
                         )
                     }
@@ -617,7 +621,7 @@ private fun JobDetailContent(
                     // Posted date
                     DetailRow(
                         icon = AppIcons.Content.schedule,
-                        label = "Posted",
+                        label = stringResource(R.string.posted_label),
                         value = formatDate(job.createdAt)
                     )
                 }
@@ -661,7 +665,7 @@ private fun JobDetailContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Client Information",
+                        text = stringResource(R.string.client_information_title),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -672,7 +676,7 @@ private fun JobDetailContent(
                     
                     DetailRow(
                         icon = AppIcons.Content.person,
-                        label = "Posted by",
+                        label = stringResource(R.string.posted_by_label),
                         value = job.clientName
                     )
 
@@ -680,7 +684,7 @@ private fun JobDetailContent(
                     job.professionalName?.let { professionalName ->
                         DetailRow(
                             icon = AppIcons.Content.work,
-                            label = "Assigned to",
+                            label = stringResource(R.string.assigned_to_label),
                             value = professionalName
                         )
                     }
@@ -713,7 +717,7 @@ private fun JobDetailContent(
                                 tint = MaterialTheme.colorScheme.primary
                             )
                             Text(
-                                text = "Additional Notes",
+                                text = stringResource(R.string.additional_notes_title),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -759,7 +763,7 @@ private fun JobDetailContent(
                                 tint = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Text(
-                                text = "Application Submitted - Pending Review",
+                                text = stringResource(R.string.application_pending_review),
                                 style = MaterialTheme.typography.titleSmall.copy(
                                     fontWeight = FontWeight.SemiBold
                                 ),
@@ -786,7 +790,7 @@ private fun JobDetailContent(
                                 .size(IconSizes.medium)
                         )
                         Text(
-                            text = "Apply for this Job",
+                            text = stringResource(R.string.apply_for_job_button),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -915,7 +919,7 @@ private fun LocationMapSection(
             )
             Column {
                 Text(
-                    text = "Location",
+                    text = stringResource(R.string.location),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )

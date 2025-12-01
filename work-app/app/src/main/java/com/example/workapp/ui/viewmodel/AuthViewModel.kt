@@ -467,6 +467,11 @@ class AuthViewModel @Inject constructor(
             checkAuthStatus()
         }
     }
+
+    fun setLanguage(languageCode: String) {
+        val localeList = androidx.core.os.LocaleListCompat.forLanguageTags(languageCode)
+        androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(localeList)
+    }
 }
 
 sealed class AuthState {

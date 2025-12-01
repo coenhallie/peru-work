@@ -34,6 +34,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -80,6 +85,7 @@ fun ProfileScreen(
     var showDeleteDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Refresh profile when screen is shown
     LaunchedEffect(Unit) {
@@ -90,7 +96,7 @@ fun ProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             WorkAppTopBar(
-                title = "Profile"
+                title = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.profile_title)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -134,7 +140,7 @@ fun ProfileScreen(
                         // Profile Image
                         AsyncImage(
                             model = currentUser?.profileImageUrl ?: "https://via.placeholder.com/150",
-                            contentDescription = "Profile picture",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.profile_picture_desc),
                             modifier = Modifier
                                 .size(120.dp)
                                 .clip(CircleShape),
@@ -145,7 +151,7 @@ fun ProfileScreen(
 
                         // Name
                         Text(
-                            text = currentUser?.name ?: "User Name",
+                            text = currentUser?.name ?: androidx.compose.ui.res.stringResource(com.example.workapp.R.string.user_name),
                             style = MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold
                             ),
@@ -174,7 +180,7 @@ fun ProfileScreen(
                                 modifier = Modifier.size(IconSizes.small)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Edit Profile")
+                            Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.edit_profile))
                         }
                     }
                 }
@@ -189,7 +195,7 @@ fun ProfileScreen(
                 ) {
                     Column(modifier = Modifier.padding(vertical = 8.dp)) {
                         Text(
-                            text = "Contact Information",
+                            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.contact_information),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
@@ -200,20 +206,20 @@ fun ProfileScreen(
 
                         ProfileInfoItem(
                             icon = AppIcons.Content.email,
-                            label = "Email",
-                            value = currentUser?.email ?: "Not provided"
+                            label = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.email),
+                            value = currentUser?.email ?: androidx.compose.ui.res.stringResource(com.example.workapp.R.string.not_provided)
                         )
 
                         ProfileInfoItem(
                             icon = AppIcons.Content.phone,
-                            label = "Phone",
-                            value = currentUser?.phone ?: "Not provided"
+                            label = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.phone),
+                            value = currentUser?.phone ?: androidx.compose.ui.res.stringResource(com.example.workapp.R.string.not_provided)
                         )
 
                         ProfileInfoItem(
                             icon = AppIcons.Content.language,
-                            label = "Location",
-                            value = currentUser?.location ?: "Not provided"
+                            label = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.location),
+                            value = currentUser?.location ?: androidx.compose.ui.res.stringResource(com.example.workapp.R.string.not_provided)
                         )
                     }
                 }
@@ -231,12 +237,49 @@ fun ProfileScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "Account",
+                            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.account),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
                             modifier = Modifier.padding(bottom = 4.dp)
                         )
+
+                        // Language Toggle
+                        var expanded by remember { mutableStateOf(false) }
+                        val currentLocales = androidx.appcompat.app.AppCompatDelegate.getApplicationLocales()
+                        val currentLanguage = if (!currentLocales.isEmpty) currentLocales.get(0)?.language else "en"
+                        val languageOptions = mapOf("en" to com.example.workapp.R.string.english, "es" to com.example.workapp.R.string.spanish)
+                        
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            androidx.compose.material3.OutlinedTextField(
+                                value = androidx.compose.ui.res.stringResource(languageOptions[currentLanguage] ?: com.example.workapp.R.string.english),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.language)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                                colors = androidx.compose.material3.ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                languageOptions.forEach { (code, stringRes) ->
+                                    DropdownMenuItem(
+                                        text = { Text(androidx.compose.ui.res.stringResource(stringRes)) },
+                                        onClick = {
+                                            authViewModel.setLanguage(code)
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
 
                         OutlinedButton(
                             onClick = onSignOut,
@@ -248,7 +291,7 @@ fun ProfileScreen(
                                 modifier = Modifier.size(IconSizes.small)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sign Out")
+                            Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.sign_out))
                         }
                         
                         OutlinedButton(
@@ -264,14 +307,14 @@ fun ProfileScreen(
                                 modifier = Modifier.size(IconSizes.small)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Delete Account")
+                            Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.delete_account))
                         }
                     }
                 }
 
                 // App Version
                 Text(
-                    text = "Version 1.0.0",
+                    text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.app_version),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier
@@ -291,7 +334,7 @@ fun ProfileScreen(
             onDismissRequest = { showDeleteDialog = false },
             title = {
                 Text(
-                    text = "Delete Account?",
+                    text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.delete_account_title),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold
                     )
@@ -299,11 +342,7 @@ fun ProfileScreen(
             },
             text = {
                 Text(
-                    text = "This will permanently delete your account and all associated data including:\n\n" +
-                            "• Your profile information\n" +
-                            "• All job listings you've created\n" +
-                            "• All job applications you've submitted\n\n" +
-                            "This action cannot be undone.",
+                    text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.delete_account_message),
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
@@ -318,7 +357,7 @@ fun ProfileScreen(
                             onError = { error ->
                                 scope.launch {
                                     snackbarHostState.showSnackbar(
-                                        message = "Failed to delete account: $error"
+                                        message = context.getString(com.example.workapp.R.string.delete_account_error, error)
                                     )
                                 }
                             }
@@ -328,12 +367,12 @@ fun ProfileScreen(
                         containerColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("Delete")
+                    Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.delete))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancel")
+                    Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.cancel))
                 }
             }
         )

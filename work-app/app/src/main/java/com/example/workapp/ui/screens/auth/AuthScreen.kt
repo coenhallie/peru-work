@@ -64,6 +64,8 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 
 /**
  * Modern authentication screen with Google Sign-In as primary option
@@ -116,29 +118,29 @@ fun AuthScreen(
                                 viewModel.signInWithGoogle(googleIdTokenCredential.idToken)
                             } catch (e: Exception) {
                                 Log.e("AuthScreen", "Error creating GoogleIdTokenCredential", e)
-                                snackbarHostState.showSnackbar("Failed to process Google credential: ${e.message}")
+                                snackbarHostState.showSnackbar(context.getString(R.string.google_credential_error, e.message))
                             }
                         } else {
                             Log.e("AuthScreen", "Unexpected credential type: ${credential.type}")
-                            snackbarHostState.showSnackbar("Unexpected credential type")
+                            snackbarHostState.showSnackbar(context.getString(R.string.unexpected_credential_type))
                         }
                     }
                     else -> {
                         Log.e("AuthScreen", "Unexpected credential class: ${credential::class.java.name}")
-                        snackbarHostState.showSnackbar("Unexpected credential format")
+                        snackbarHostState.showSnackbar(context.getString(R.string.unexpected_credential_format))
                     }
                 }
             } catch (e: GetCredentialException) {
                 // Handle credential retrieval error
                 Log.e("AuthScreen", "GetCredentialException", e)
                 snackbarHostState.showSnackbar(
-                    message = "Google Sign-In cancelled or failed: ${e.message}"
+                    message = context.getString(R.string.google_sign_in_error, e.message)
                 )
             } catch (e: Exception) {
                 // Handle other errors
                 Log.e("AuthScreen", "Exception during Google Sign-In", e)
                 snackbarHostState.showSnackbar(
-                    message = "An error occurred: ${e.message}"
+                    message = context.getString(R.string.generic_error, e.message)
                 )
             }
         }
@@ -207,7 +209,7 @@ fun AuthScreen(
                 
                 // Header
                 Text(
-                    text = "Welcome Back",
+                    text = stringResource(R.string.welcome_back),
                     style = MaterialTheme.typography.headlineLarge.copy(
                         fontWeight = FontWeight.Bold
                     ),
@@ -215,7 +217,7 @@ fun AuthScreen(
                 )
                 
                 Text(
-                    text = "Sign in to continue",
+                    text = stringResource(R.string.sign_in_continue),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     modifier = Modifier.fillMaxWidth()
@@ -253,7 +255,7 @@ fun AuthScreen(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        text = "Continue with Google",
+                        text = stringResource(R.string.continue_google),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium
                     )
@@ -268,7 +270,7 @@ fun AuthScreen(
                 ) {
                     HorizontalDivider(modifier = Modifier.weight(1f))
                     Text(
-                        text = "or continue with email",
+                        text = stringResource(R.string.or_continue_email),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -291,7 +293,7 @@ fun AuthScreen(
                             modifier = Modifier.size(IconSizes.medium)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign in with Email")
+                        Text(stringResource(R.string.sign_in_email))
                     }
                 } else {
                     SignInForm(
@@ -309,7 +311,7 @@ fun AuthScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Don't have an account?",
+                            text = stringResource(R.string.dont_have_account),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
@@ -320,7 +322,7 @@ fun AuthScreen(
                             }
                         ) {
                             Text(
-                                text = "Sign Up",
+                                text = stringResource(R.string.sign_up),
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
@@ -347,7 +349,7 @@ private fun SignInForm(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.email)) },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Form.email,
@@ -363,7 +365,7 @@ private fun SignInForm(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text(stringResource(R.string.password)) },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Form.lock,
@@ -375,7 +377,7 @@ private fun SignInForm(
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
                         imageVector = if (passwordVisible) AppIcons.Form.visibility else AppIcons.Form.visibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        contentDescription = if (passwordVisible) stringResource(R.string.hide_password) else stringResource(R.string.show_password),
                         modifier = Modifier.size(IconSizes.medium)
                     )
                 }
@@ -402,7 +404,7 @@ private fun SignInForm(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Text("Sign In")
+            Text(stringResource(R.string.sign_in))
         }
     }
 }

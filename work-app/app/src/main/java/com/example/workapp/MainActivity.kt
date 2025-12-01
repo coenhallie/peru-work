@@ -181,9 +181,9 @@ class MainActivity : AppCompatActivity() {
             })
 
         val promptInfo = BiometricPrompt.PromptInfo.Builder()
-            .setTitle("Biometric Login")
-            .setSubtitle("Log in using your biometric credential")
-            .setNegativeButtonText("Cancel")
+            .setTitle(getString(R.string.biometric_login_title))
+            .setSubtitle(getString(R.string.biometric_login_subtitle))
+            .setNegativeButtonText(getString(R.string.cancel))
             .build()
 
         biometricPrompt.authenticate(promptInfo)

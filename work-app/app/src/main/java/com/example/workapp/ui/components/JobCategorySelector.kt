@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 
 import com.example.workapp.ui.model.JobCategory
 import com.example.workapp.ui.model.jobCategories
@@ -55,12 +57,12 @@ fun JobCategorySelector(
             value = selectedCategory,
             onValueChange = {},
             readOnly = true,
-            label = { Text("Categoría de Trabajo*") },
-            placeholder = { Text("Selecciona una categoría") },
+            label = { Text(stringResource(R.string.job_category_label)) },
+            placeholder = { Text(stringResource(R.string.select_category_placeholder)) },
             trailingIcon = {
                 Icon(
                     imageVector = AppIcons.Actions.edit, // Or a dropdown arrow
-                    contentDescription = "Select Category",
+                    contentDescription = stringResource(R.string.select_category_desc),
                     modifier = Modifier.size(IconSizes.small)
                 )
             },
@@ -94,7 +96,7 @@ fun JobCategorySelector(
                     .padding(bottom = 32.dp)
             ) {
                 Text(
-                    text = "Selecciona una Categoría",
+                    text = stringResource(R.string.select_category_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(16.dp)
                 )

@@ -48,6 +48,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.workapp.ui.components.AddressAutofillTextField
@@ -86,11 +88,13 @@ fun CreateJobScreen(
         }
     }
 
+    val successMessage = stringResource(R.string.job_posted_success)
+
     // Handle job creation state
     LaunchedEffect(createJobState) {
         when (createJobState) {
             is CreateJobState.Success -> {
-                snackbarHostState.showSnackbar("Job posted successfully!")
+                snackbarHostState.showSnackbar(successMessage)
                 viewModel.resetCreateJobState()
                 onJobCreated()
             }
@@ -108,7 +112,7 @@ fun CreateJobScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             WorkAppTopBar(
-                title = "Post a Job"
+                title = stringResource(R.string.post_a_job_title)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -140,7 +144,7 @@ fun CreateJobScreen(
                             ) {
                                 AsyncImage(
                                     model = selectedImageUris[index],
-                                    contentDescription = "Selected Image ${index + 1}",
+                                    contentDescription = stringResource(R.string.selected_image_desc, index + 1),
                                     modifier = Modifier.fillMaxSize(),
                                     contentScale = ContentScale.Crop
                                 )
@@ -160,7 +164,7 @@ fun CreateJobScreen(
                                 ) {
                                     Icon(
                                         imageVector = AppIcons.Actions.close,
-                                        contentDescription = "Remove Image",
+                                        contentDescription = stringResource(R.string.remove_image_desc),
                                         modifier = Modifier.size(16.dp)
                                     )
                                 }
@@ -185,11 +189,11 @@ fun CreateJobScreen(
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                         Icon(
                                             imageVector = AppIcons.Actions.add,
-                                            contentDescription = "Add more",
+                                            contentDescription = stringResource(R.string.add_more_desc),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
-                                            text = "Add Photo",
+                                            text = stringResource(R.string.add_photo_label),
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -208,7 +212,7 @@ fun CreateJobScreen(
                         },
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("Select Different Photos")
+                        Text(stringResource(R.string.select_different_photos))
                     }
                 } else {
                     Button(
@@ -235,7 +239,7 @@ fun CreateJobScreen(
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("Add Job Photos (Max 5)*")
+                            Text(stringResource(R.string.add_job_photos_label))
                         }
                     }
                 }
@@ -245,8 +249,8 @@ fun CreateJobScreen(
             OutlinedTextField(
                 value = jobTitle,
                 onValueChange = { jobTitle = it },
-                label = { Text("Job Title*") },
-                placeholder = { Text("e.g., Kitchen Renovation") },
+                label = { Text(stringResource(R.string.job_title_label)) },
+                placeholder = { Text(stringResource(R.string.job_title_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 shape = MaterialTheme.shapes.medium
@@ -263,8 +267,8 @@ fun CreateJobScreen(
             AddressAutofillTextField(
                 value = jobLocation,
                 onValueChange = { jobLocation = it },
-                label = "Location*",
-                placeholder = "Start typing the job location...",
+                label = stringResource(R.string.job_location_label),
+                placeholder = stringResource(R.string.job_location_placeholder),
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -274,8 +278,8 @@ fun CreateJobScreen(
             OutlinedTextField(
                 value = jobDescription,
                 onValueChange = { jobDescription = it },
-                label = { Text("Job Description*") },
-                placeholder = { Text("Describe your project in detail:\n\n• What needs to be done? (e.g., renovate 15m² kitchen)\n• What is the purpose/goal? (e.g., modernize for better functionality)\n• Specific requirements? (e.g., materials, timeline, budget expectations)\n• Current condition and any special considerations?\n\nMore details help professionals provide accurate proposals.") },
+                label = { Text(stringResource(R.string.job_description_label)) },
+                placeholder = { Text(stringResource(R.string.job_description_placeholder)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(200.dp),
@@ -314,7 +318,7 @@ fun CreateJobScreen(
                     )
                 } else {
                     Text(
-                        text = "Post Job",
+                        text = stringResource(R.string.post_job_button),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -324,7 +328,7 @@ fun CreateJobScreen(
 
             // Help text
             Text(
-                text = "* Required fields",
+                text = stringResource(R.string.required_fields_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )

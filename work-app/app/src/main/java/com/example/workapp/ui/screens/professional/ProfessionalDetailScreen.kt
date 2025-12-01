@@ -54,6 +54,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.workapp.data.model.User
@@ -142,12 +144,12 @@ fun ProfessionalDetailScreen(
     Scaffold(
         topBar = {
             WorkAppTopBar(
-                title = "Professional",
+                title = stringResource(R.string.professional_role),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.back),
                             modifier = Modifier.size(IconSizes.medium)
                         )
                     }
@@ -172,7 +174,7 @@ fun ProfessionalDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = error ?: "Error loading professional",
+                        text = error ?: stringResource(R.string.error_loading_professional),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
@@ -201,7 +203,7 @@ fun ProfessionalDetailScreen(
                                 .imePadding() // Add padding for keyboard
                         ) {
                             Text(
-                                text = "Request Service",
+                                text = stringResource(R.string.request_service_title),
                                 style = MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold
                                 )
@@ -210,7 +212,7 @@ fun ProfessionalDetailScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Text(
-                                text = "Start a conversation with ${professional?.name} to discuss your project.",
+                                text = stringResource(R.string.start_conversation_desc, professional?.name ?: ""),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
@@ -220,8 +222,8 @@ fun ProfessionalDetailScreen(
                             OutlinedTextField(
                                 value = initialMessage,
                                 onValueChange = { initialMessage = it },
-                                label = { Text("Message (Optional)") },
-                                placeholder = { Text("Hi, I'm interested in your services...") },
+                                label = { Text(stringResource(R.string.message_optional)) },
+                                placeholder = { Text(stringResource(R.string.message_placeholder)) },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(150.dp),
@@ -242,7 +244,7 @@ fun ProfessionalDetailScreen(
                                 TextButton(
                                     onClick = { showBottomSheet = false }
                                 ) {
-                                    Text("Cancel")
+                                    Text(stringResource(R.string.cancel))
                                 }
                                 
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -265,7 +267,7 @@ fun ProfessionalDetailScreen(
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
                                     }
-                                    Text("Send Request")
+                                    Text(stringResource(R.string.send_request))
                                 }
                             }
                         }
@@ -309,7 +311,7 @@ private fun ProfessionalDetailContent(
                 // Profile Image
                 AsyncImage(
                     model = professional.profileImageUrl ?: "https://via.placeholder.com/200",
-                    contentDescription = "${professional.name} profile",
+                    contentDescription = stringResource(R.string.profile_desc_template, professional.name),
                     modifier = Modifier
                         .size(120.dp)
                         .clip(CircleShape)
@@ -331,7 +333,7 @@ private fun ProfessionalDetailContent(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = professional.currentProfession ?: "Professional",
+                    text = professional.currentProfession ?: stringResource(R.string.professional_role),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -344,7 +346,7 @@ private fun ProfessionalDetailContent(
                 ) {
                     Icon(
                         imageVector = AppIcons.Content.star,
-                        contentDescription = "Rating",
+                        contentDescription = stringResource(R.string.rating_desc),
                         tint = StarYellow,
                         modifier = Modifier.size(IconSizes.medium)
                     )
@@ -356,7 +358,7 @@ private fun ProfessionalDetailContent(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "(${professional.reviewCount ?: 0} reviews)",
+                        text = stringResource(R.string.reviews_count, professional.reviewCount ?: 0),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -370,12 +372,12 @@ private fun ProfessionalDetailContent(
                 ) {
                     InfoChip(
                         icon = AppIcons.Content.work,
-                        label = "Experience",
-                        value = "${professional.experience ?: 0} years"
+                        label = stringResource(R.string.experience),
+                        value = stringResource(R.string.years_experience, (professional.experience ?: 0).toString())
                     )
                     InfoChip(
                         icon = AppIcons.Content.work,
-                        label = "Projects",
+                        label = stringResource(R.string.projects),
                         value = "${professional.completedProjects ?: 0}"
                     )
                 }
@@ -396,7 +398,7 @@ private fun ProfessionalDetailContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "About",
+                        text = stringResource(R.string.about),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -425,7 +427,7 @@ private fun ProfessionalDetailContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Specialties",
+                        text = stringResource(R.string.specialties),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -465,7 +467,7 @@ private fun ProfessionalDetailContent(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Previous Projects",
+                        text = stringResource(R.string.previous_projects),
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -487,7 +489,7 @@ private fun ProfessionalDetailContent(
                                     items(job.photoUrls) { url ->
                                         AsyncImage(
                                             model = url,
-                                            contentDescription = "Project photo",
+                                            contentDescription = stringResource(R.string.project_photo),
                                             modifier = Modifier
                                                 .size(120.dp)
                                                 .clip(MaterialTheme.shapes.medium)
@@ -520,7 +522,7 @@ private fun ProfessionalDetailContent(
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "Contact Information",
+                    text = stringResource(R.string.contact_information),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.SemiBold
                     )
@@ -529,19 +531,19 @@ private fun ProfessionalDetailContent(
                 
                 ContactRow(
                     icon = AppIcons.Content.phone,
-                    label = "Phone",
+                    label = stringResource(R.string.phone),
                     value = professional.phone
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 ContactRow(
                     icon = AppIcons.Content.email,
-                    label = "Email",
+                    label = stringResource(R.string.email),
                     value = professional.email
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 ContactRow(
                     icon = AppIcons.Content.place,
-                    label = "Location",
+                    label = stringResource(R.string.location),
                     value = professional.location
                 )
             }
@@ -581,7 +583,7 @@ private fun ProfessionalDetailContent(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = if (isRequestingService) "Starting Chat..." else "Request Service",
+                    text = if (isRequestingService) stringResource(R.string.starting_chat) else stringResource(R.string.request_service_button),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.SemiBold
                     )

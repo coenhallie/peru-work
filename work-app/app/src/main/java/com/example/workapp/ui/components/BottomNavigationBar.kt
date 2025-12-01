@@ -23,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import com.example.workapp.data.model.User
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 
 /**
  * Bottom navigation destinations for the app
@@ -30,41 +32,41 @@ import com.example.workapp.ui.theme.IconSizes
  */
 sealed class BottomNavDestination(
     val route: String,
-    val label: String,
-    val contentDescription: String
+    val labelRes: Int,
+    val contentDescriptionRes: Int
 ) {
     data class Home(
         val isProfessional: Boolean = false
     ) : BottomNavDestination(
         route = "home",
-        label = if (isProfessional) "Explore" else "Search",
-        contentDescription = if (isProfessional) "Explore available jobs" else "Search for professionals"
+        labelRes = if (isProfessional) R.string.nav_explore else R.string.nav_search,
+        contentDescriptionRes = if (isProfessional) R.string.nav_explore_desc else R.string.nav_search_desc
     )
 
     object CreateJob : BottomNavDestination(
         route = "create_job",
-        label = "Create",
-        contentDescription = "Create a job listing"
+        labelRes = R.string.nav_create,
+        contentDescriptionRes = R.string.nav_create_desc
     )
 
     data class Listings(
         val isProfessional: Boolean = false
     ) : BottomNavDestination(
         route = "my_jobs",
-        label = if (isProfessional) "Applied" else "Posted",
-        contentDescription = if (isProfessional) "View your job applications" else "View your posted jobs"
+        labelRes = if (isProfessional) R.string.nav_applied else R.string.nav_posted,
+        contentDescriptionRes = if (isProfessional) R.string.nav_applied_desc else R.string.nav_posted_desc
     )
 
     object Profile : BottomNavDestination(
         route = "profile",
-        label = "Profile",
-        contentDescription = "View your profile"
+        labelRes = R.string.profile_title,
+        contentDescriptionRes = R.string.nav_profile_desc
     )
 
     object Chat : BottomNavDestination(
         route = "chat",
-        label = "Chat",
-        contentDescription = "View your messages"
+        labelRes = R.string.nav_chat,
+        contentDescriptionRes = R.string.nav_chat_desc
     )
 }
 
@@ -160,7 +162,7 @@ fun BottomNavigationBar(
                                             route = destination.route,
                                             selected = selected
                                         ),
-                                        contentDescription = destination.contentDescription,
+                                        contentDescription = stringResource(destination.contentDescriptionRes),
                                         modifier = Modifier.size(IconSizes.medium)
                                     )
                                 }
@@ -177,7 +179,7 @@ fun BottomNavigationBar(
                                             route = destination.route,
                                             selected = selected
                                         ),
-                                        contentDescription = destination.contentDescription,
+                                        contentDescription = stringResource(destination.contentDescriptionRes),
                                         modifier = Modifier.size(IconSizes.medium)
                                     )
                                 }
@@ -194,7 +196,7 @@ fun BottomNavigationBar(
                                             route = destination.route,
                                             selected = selected
                                         ),
-                                        contentDescription = destination.contentDescription,
+                                        contentDescription = stringResource(destination.contentDescriptionRes),
                                         modifier = Modifier.size(IconSizes.medium)
                                     )
                                 }
@@ -204,14 +206,14 @@ fun BottomNavigationBar(
                                         route = destination.route,
                                         selected = selected
                                     ),
-                                    contentDescription = destination.contentDescription,
+                                    contentDescription = stringResource(destination.contentDescriptionRes),
                                     modifier = Modifier.size(IconSizes.medium)
                                 )
                             }
                         },
                         label = {
                             Text(
-                                text = destination.label,
+                                text = stringResource(destination.labelRes),
                                 style = MaterialTheme.typography.labelMedium
                             )
                         },
@@ -223,7 +225,7 @@ fun BottomNavigationBar(
                             unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
                         ),
                         modifier = Modifier.semantics {
-                            contentDescription = destination.contentDescription
+                            contentDescription = "" // Content description is handled by the Icon
                         }
                     )
                 }

@@ -1,0 +1,240 @@
+<resources>
+    <string name="app_name">workApp</string>
+    <string name="default_web_client_id">339121252724-17jh6d4c3jnh8dgi94c1tablghj1cu1v.apps.googleusercontent.com</string>
+    
+    <!-- Mapbox Access Token -->
+    <string name="mapbox_access_token" translatable="false">pk.eyJ1IjoiY29lbmhhbGxpZSIsImEiOiJjbWkyZDlxZ3EwdmlhMmxzZm1yOGxvYXJuIn0.gIcfy_NAO1QvGvvqSaJJyA</string>
+    
+    <!-- Job Management -->
+    <string name="edit_job">Editar Trabajo</string>
+    <string name="delete_job">Eliminar Trabajo</string>
+    <string name="update_job">Actualizar Trabajo</string>
+    <string name="delete_job_title">Eliminar Trabajo</string>
+    <string name="delete_job_message">¿Estás seguro de que quieres eliminar esta oferta de trabajo? Esta acción no se puede deshacer.</string>
+    <string name="delete">Eliminar</string>
+    <string name="cancel">Cancelar</string>
+    <string name="job_updated_successfully">¡Trabajo actualizado con éxito!</string>
+    <string name="job_deleted_successfully">¡Trabajo eliminado con éxito!</string>
+    <string name="my_jobs">Mis Trabajos</string>
+    <string name="available_jobs">Trabajos Disponibles</string>
+    <string name="edit_job_listing">Editar Oferta de Trabajo</string>
+    <string name="update_project_details">Actualiza los detalles de tu proyecto</string>
+    <string name="no_jobs_posted">Aún no hay trabajos publicados</string>
+    <string name="create_first_job">Crea tu primera oferta de trabajo</string>
+    <string name="default_notification_channel_id">default_channel_id</string>
+
+    <!-- Profile Screen -->
+    <string name="profile_title">Perfil</string>
+    <string name="edit_profile">Editar Perfil</string>
+    <string name="contact_information">Información de Contacto</string>
+    <string name="email">Correo electrónico</string>
+    <string name="phone">Teléfono</string>
+    <string name="location">Ubicación</string>
+    <string name="account">Cuenta</string>
+    <string name="sign_out">Cerrar Sesión</string>
+    <string name="delete_account">Eliminar Cuenta</string>
+    <string name="delete_account_title">¿Eliminar Cuenta?</string>
+    <string name="delete_account_message">Esto eliminará permanentemente tu cuenta y todos los datos asociados, incluyendo:\n\n• Tu información de perfil\n• Todas las ofertas de trabajo que has creado\n• Todas las solicitudes de trabajo que has enviado\n\nEsta acción no se puede deshacer.</string>
+    <string name="not_provided">No proporcionado</string>
+    <string name="user_name">Nombre de Usuario</string>
+    <string name="profile_picture_desc">Foto de perfil</string>
+    
+    <!-- Language Settings -->
+    <string name="language">Idioma</string>
+    <string name="select_language">Seleccionar Idioma</string>
+    <string name="english">Inglés</string>
+    <string name="spanish">Español</string>
+
+    <!-- Navigation -->
+    <string name="nav_explore">Explorar</string>
+    <string name="nav_search">Buscar</string>
+    <string name="nav_explore_desc">Explorar trabajos disponibles</string>
+    <string name="nav_search_desc">Buscar profesionales</string>
+    <string name="nav_create">Crear</string>
+    <string name="nav_create_desc">Crear una oferta de trabajo</string>
+    <string name="nav_applied">Postulaciones</string>
+    <string name="nav_posted">Publicados</string>
+    <string name="nav_applied_desc">Ver tus postulaciones</string>
+    <string name="nav_posted_desc">Ver tus trabajos publicados</string>
+    <string name="nav_profile_desc">Ver tu perfil</string>
+    <string name="nav_chat">Chat</string>
+    <string name="nav_chat_desc">Ver tus mensajes</string>
+
+    <!-- Home Screen -->
+    <string name="home_recent_jobs">Trabajos Recientes</string>
+    <string name="home_find_professional">Buscar un profesional</string>
+    <string name="home_latest_opportunities">Últimas oportunidades para ti</string>
+    <string name="home_hand_picked_professionals">Profesionales seleccionados cerca de ti</string>
+    <string name="search_professionals_placeholder">Buscar profesionales...</string>
+    <string name="clear_search">Borrar búsqueda</string>
+    <string name="filters">Filtros</string>
+    <string name="no_professionals_found">No se encontraron profesionales</string>
+    <string name="clear_filters">Borrar Filtros</string>
+    <string name="clear_all">Borrar Todo</string>
+    <string name="distance">Distancia</string>
+    <string name="within_km">Dentro de %1$d km</string>
+    <string name="job_category">Categoría de Trabajo</string>
+    <string name="all_categories">Todas las Categorías</string>
+    <string name="apply_filters">Aplicar Filtros</string>
+    <string name="no_jobs_available">No hay trabajos disponibles</string>
+    <string name="check_back_later">Vuelve más tarde para ver nuevas oportunidades</string>
+    <string name="professional_role">Profesional</string>
+    <string name="reviews_count">(%1$d reseñas)</string>
+    <string name="years_experience">%1$s años de experiencia</string>
+
+    <!-- Auth Screen -->
+    <string name="welcome_back">Bienvenido de nuevo</string>
+    <string name="sign_in_continue">Inicia sesión para continuar</string>
+    <string name="continue_google">Continuar con Google</string>
+    <string name="or_continue_email">o continuar con correo</string>
+    <string name="sign_in_email">Iniciar sesión con correo</string>
+    <string name="dont_have_account">¿No tienes una cuenta?</string>
+    <string name="sign_up">Regístrate</string>
+    <string name="sign_in">Iniciar Sesión</string>
+    <string name="password">Contraseña</string>
+    <string name="hide_password">Ocultar contraseña</string>
+    <string name="show_password">Mostrar contraseña</string>
+
+    <!-- Sign Up Stepper -->
+    <string name="back">Atrás</string>
+    <string name="back_sign_in">Volver al inicio de sesión</string>
+    <string name="finish">Finalizar</string>
+    <string name="next">Siguiente</string>
+    <string name="previous">Anterior</string>
+    <string name="who_are_you">¿Quién eres?</string>
+    <string name="choose_role">Elige cómo quieres usar la aplicación</string>
+    <string name="role_client">Cliente</string>
+    <string name="role_professional">Profesional</string>
+    <string name="basic_info">Información Básica</string>
+    <string name="full_name">Nombre Completo</string>
+    <string name="contact_details">Detalles de Contacto</string>
+    <string name="reach_you">¿Cómo pueden contactarte?</string>
+    <string name="phone_number">Número de Teléfono</string>
+    <string name="where_based">¿Dónde te encuentras?</string>
+    <string name="address">Dirección</string>
+    <string name="address_placeholder">Empieza a escribir tu dirección...</string>
+    <string name="professional_details">Detalles Profesionales</string>
+    <string name="bio">Biografía</string>
+    <string name="bio_placeholder">Cuéntanos sobre tu experiencia...</string>
+    <string name="add_profile_photo">Añadir Foto de Perfil</string>
+    <string name="profile_photo_desc_signup">Esta será tu foto de perfil principal que verán los clientes</string>
+    <string name="tap_upload">Toca para subir</string>
+    <string name="optional_skip">Opcional - Puedes saltar este paso</string>
+    <string name="previous_work">Portafolio de Trabajos Anteriores</string>
+    <string name="previous_work_desc">Muestra tus proyectos anteriores para que los clientes vean la calidad de tu trabajo</string>
+    <string name="no_projects_yet">Aún no se han añadido proyectos anteriores</string>
+    <string name="add_previous_project">Añadir Proyecto Anterior</string>
+    <string name="optional_skip_projects">Opcional - Puedes saltar este paso o añadir hasta 10 proyectos</string>
+    <string name="project_description">Descripción del Proyecto</string>
+    <string name="project_desc_placeholder">ej. Renovación de cocina en Lima - reemplazo de gabinetes, encimeras e instalación de electrodomésticos</string>
+    <string name="project_photos_optional">Fotos del Proyecto (Opcional)</string>
+    <string name="add_photos_limit">Añade hasta 2 fotos mostrando tu trabajo (%1$d/2)</string>
+    <string name="remove_photo">Eliminar foto</string>
+    <string name="add_photo">Añadir Foto</string>
+    <string name="add_project_btn">Añadir Proyecto</string>
+    <string name="availability">Disponibilidad</string>
+    <string name="availability_desc">¿Cuándo sueles estar disponible para trabajar?</string>
+    <string name="select_availability">Seleccionar Disponibilidad</string>
+    <string name="avail_weekdays">Días laborables (9 AM - 5 PM)</string>
+    <string name="avail_weekends">Solo fines de semana</string>
+    <string name="avail_evenings">Noches (Después de 5 PM)</string>
+    <string name="avail_flexible">Flexible / A petición</string>
+    <string name="avail_fulltime">Tiempo completo (Emergencia 24/7)</string>
+    <string name="work_distance">Distancia de Trabajo</string>
+    <string name="work_distance_desc">¿Qué tan lejos estás dispuesto a viajar por trabajo?</string>
+    <string name="km_unit">%1$d km</string>
+    <string name="km_range_start">1 km</string>
+    <string name="km_range_end">100 km</string>
+    <string name="app_version">Versión 1.0.0</string>
+    <string name="delete_account_error">Error al eliminar la cuenta: %1$s</string>
+    <string name="biometric_login_title">Inicio de sesión biométrico</string>
+    <string name="biometric_login_subtitle">Inicia sesión usando tu credencial biométrica</string>
+    <string name="onboarding_title_1">Encuentra Profesionales</string>
+    <string name="onboarding_desc_1">Conecta al instante con profesionales confiables y bien calificados para cualquier tarea.</string>
+    <string name="onboarding_title_2">Comunicación Fácil</string>
+    <string name="onboarding_desc_2">Chatea directamente con profesionales, comparte detalles y obtén cotizaciones en minutos.</string>
+    <string name="onboarding_title_3">Pagos Seguros</string>
+    <string name="onboarding_desc_3">Paga de forma segura a través de la aplicación solo cuando estés satisfecho con el trabajo.</string>
+    <string name="or_continue_with_email">o continúa con correo electrónico</string>
+    <string name="edit_profile_title">Editar Perfil</string>
+    <string name="change_photo">Cambiar Foto</string>
+    <string name="basic_information">Información Básica</string>
+    <string name="professional_information">Información Profesional</string>
+    <string name="craft_profession">Oficio/Profesión</string>
+    <string name="hourly_rate_pen">Tarifa por Hora (PEN)</string>
+    <string name="availability_placeholder">ej., Lunes - Viernes, 9am - 5pm</string>
+    <string name="previous_projects">Proyectos Anteriores</string>
+    <string name="add">Agregar</string>
+    <string name="no_previous_projects">Aún no hay proyectos anteriores.</string>
+    <string name="delete_project">Eliminar proyecto</string>
+    <string name="project_photo">Foto del proyecto</string>
+    <string name="save_changes">Guardar Cambios</string>
+    <string name="profile_updated_success">Perfil actualizado exitosamente</string>
+    <string name="profile_update_error">Error al actualizar perfil: %1$s</string>
+    <string name="photos_max_2">Fotos (Máx 2)</string>
+    <string name="remove">Eliminar</string>
+    <string name="google_credential_error">Error al procesar credencial de Google: %1$s</string>
+    <string name="unexpected_credential_type">Tipo de credencial inesperado</string>
+    <string name="unexpected_credential_format">Formato de credencial inesperado</string>
+    <string name="google_sign_in_error">Inicio de sesión con Google cancelado o fallido: %1$s</string>
+    <string name="generic_error">Ocurrió un error: %1$s</string>
+    <string name="step_progress">%1$d/%2$d</string>
+
+    <!-- Professional Detail Screen -->
+    <string name="error_loading_professional">Error al cargar profesional</string>
+    <string name="request_service_title">Solicitar Servicio</string>
+    <string name="start_conversation_desc">Inicia una conversación con %1$s para discutir tu proyecto.</string>
+    <string name="message_optional">Mensaje (Opcional)</string>
+    <string name="message_placeholder">Hola, estoy interesado en tus servicios...</string>
+    <string name="send_request">Enviar Solicitud</string>
+    <string name="profile_desc_template">Perfil de %1$s</string>
+    <string name="rating_desc">Calificación</string>
+    <string name="experience">Experiencia</string>
+    <string name="projects">Proyectos</string>
+    <string name="about">Sobre mí</string>
+    <string name="specialties">Especialidades</string>
+    <string name="starting_chat">Iniciando Chat...</string>
+    <string name="request_service_button">Solicitar Servicio</string>
+    <string name="selected">Seleccionado</string>
+    <string name="currency_pen">PEN %1$s</string>
+
+    <!-- Create Job Screen -->
+    <string name="post_a_job_title">Publicar un Trabajo</string>
+    <string name="job_posted_success">¡Trabajo publicado exitosamente!</string>
+    <string name="selected_image_desc">Imagen seleccionada %1$d</string>
+    <string name="remove_image_desc">Eliminar imagen</string>
+    <string name="add_more_desc">Añadir más</string>
+    <string name="add_photo_label">Añadir Foto</string>
+    <string name="select_different_photos">Seleccionar fotos diferentes</string>
+    <string name="add_job_photos_label">Añadir fotos del trabajo (Máx 5)*</string>
+    <string name="job_title_label">Título del Trabajo*</string>
+    <string name="job_title_placeholder">ej., Renovación de Cocina</string>
+    <string name="job_location_label">Ubicación*</string>
+    <string name="job_location_placeholder">Empieza a escribir la ubicación...</string>
+    <string name="job_description_label">Descripción del Trabajo*</string>
+    <string name="job_description_placeholder">Describe tu proyecto en detalle:\n\n• ¿Qué se necesita hacer? (ej., renovar cocina de 15m²)\n• ¿Cuál es el propósito/meta? (ej., modernizar para mejor funcionalidad)\n• ¿Requisitos específicos? (ej., materiales, tiempo, presupuesto)\n• ¿Condición actual y consideraciones especiales?\n\nMás detalles ayudan a los profesionales a dar propuestas precisas.</string>
+    <string name="post_job_button">Publicar Trabajo</string>
+    <string name="required_fields_hint">* Campos obligatorios</string>
+    <string name="job_category_label">Categoría de Trabajo*</string>
+    <string name="select_category_placeholder">Selecciona una categoría</string>
+    <string name="select_category_desc">Seleccionar Categoría</string>
+    <string name="select_category_title">Selecciona una Categoría</string>
+
+    <!-- Job Detail Screen -->
+    <string name="application_submitted_success">¡Solicitud enviada exitosamente!</string>
+    <string name="view_applications">Ver Solicitudes</string>
+    <string name="review_applications_count">Revisar (%1$d)</string>
+    <string name="review_applications">Revisar Solicitudes</string>
+    <string name="job_details_title">Detalles del Trabajo</string>
+    <string name="more_options">Más opciones</string>
+    <string name="description_title">Descripción</string>
+    <string name="budget_label">Presupuesto</string>
+    <string name="deadline_label">Fecha límite</string>
+    <string name="posted_label">Publicado</string>
+    <string name="client_information_title">Información del Cliente</string>
+    <string name="posted_by_label">Publicado por</string>
+    <string name="assigned_to_label">Asignado a</string>
+    <string name="additional_notes_title">Notas Adicionales</string>
+    <string name="application_pending_review">Solicitud Enviada - Pendiente de Revisión</string>
+    <string name="apply_for_job_button">Postular a este Trabajo</string>
+</resources>

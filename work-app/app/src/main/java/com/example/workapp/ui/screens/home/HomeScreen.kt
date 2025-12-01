@@ -80,6 +80,8 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 
 /**
  * Home screen with role-based content display
@@ -112,11 +114,11 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             WorkAppTopBar(
-                title = if (isProfessional) "Recent Jobs" else "Find a professional",
+                title = if (isProfessional) stringResource(R.string.home_recent_jobs) else stringResource(R.string.home_find_professional),
                 subtitle = if (isProfessional)
-                    "Latest opportunities for you"
+                    stringResource(R.string.home_latest_opportunities)
                 else
-                    "Hand-picked professionals near you"
+                    stringResource(R.string.home_hand_picked_professionals)
             )
         },
         containerColor = MaterialTheme.colorScheme.background
@@ -183,7 +185,7 @@ private fun RegularUserHomeContent(
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchQueryChange,
-            placeholder = { Text("Search professionals...") },
+            placeholder = { Text(stringResource(R.string.search_professionals_placeholder)) },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Actions.search,
@@ -196,7 +198,7 @@ private fun RegularUserHomeContent(
                     IconButton(onClick = onClearSearch) {
                         Icon(
                             imageVector = AppIcons.Actions.close,
-                            contentDescription = "Clear search",
+                            contentDescription = stringResource(R.string.clear_search),
                             modifier = Modifier.size(IconSizes.medium)
                         )
                     }
@@ -204,7 +206,7 @@ private fun RegularUserHomeContent(
                     IconButton(onClick = { showFilterSheet = true }) {
                         Icon(
                             imageVector = AppIcons.Actions.filter,
-                            contentDescription = "Filters",
+                            contentDescription = stringResource(R.string.filters),
                             modifier = Modifier.size(IconSizes.medium),
                             tint = if (selectedCategory != null || maxDistance != null) 
                                 MaterialTheme.colorScheme.primary 
@@ -268,14 +270,14 @@ private fun RegularUserHomeContent(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No professionals found",
+                                text = stringResource(R.string.no_professionals_found),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
                             if (selectedCategory != null || maxDistance != null) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 TextButton(onClick = onClearFilters) {
-                                    Text("Clear Filters")
+                                    Text(stringResource(R.string.clear_filters))
                                 }
                             }
                         }
@@ -364,12 +366,12 @@ fun FilterBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Filters",
+                    text = stringResource(R.string.filters),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
                 TextButton(onClick = onClear) {
-                    Text("Clear All")
+                    Text(stringResource(R.string.clear_all))
                 }
             }
 
@@ -392,7 +394,7 @@ fun FilterBottomSheet(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Distance",
+                                text = stringResource(R.string.distance),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -405,7 +407,7 @@ fun FilterBottomSheet(
                         if (isDistanceEnabled) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Within ${tempDistance.toInt()} km",
+                                text = stringResource(R.string.within_km, tempDistance.toInt()),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary
                             )
@@ -421,7 +423,7 @@ fun FilterBottomSheet(
 
                         // Category Filter Header
                         Text(
-                            text = "Job Category",
+                            text = stringResource(R.string.job_category),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -432,7 +434,7 @@ fun FilterBottomSheet(
                 // All Categories Option
                 item {
                     CategoryFilterItem(
-                        name = "All Categories",
+                        name = stringResource(R.string.all_categories),
                         icon = AppIcons.Content.work, // Generic icon
                         isSelected = tempCategory == null,
                         onClick = { tempCategory = null }
@@ -471,7 +473,7 @@ fun FilterBottomSheet(
                             modifier = Modifier.fillMaxWidth(),
                             shape = MaterialTheme.shapes.large
                         ) {
-                            Text("Apply Filters")
+                            Text(stringResource(R.string.apply_filters))
                         }
                     }
                 }
@@ -512,7 +514,7 @@ private fun CategoryFilterItem(
             Spacer(modifier = Modifier.weight(1f))
             Icon(
                 imageVector = Icons.Filled.Check,
-                contentDescription = "Selected",
+                contentDescription = stringResource(R.string.selected),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(IconSizes.small)
             )
@@ -593,12 +595,12 @@ private fun ProfessionalHomeContent(
                             tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
                         Text(
-                            text = "No jobs available",
+                            text = stringResource(R.string.no_jobs_available),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                         )
                         Text(
-                            text = "Check back later for new opportunities",
+                            text = stringResource(R.string.check_back_later),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                         )
@@ -649,7 +651,7 @@ private fun ProfessionalCard(
             // Profile image
             AsyncImage(
                 model = professional.profileImageUrl ?: "https://via.placeholder.com/150",
-                contentDescription = "${professional.name} profile",
+                contentDescription = stringResource(R.string.profile_picture_desc),
                 modifier = Modifier
                     .size(80.dp)
                     .clip(CircleShape),
@@ -672,7 +674,7 @@ private fun ProfessionalCard(
                 Spacer(modifier = Modifier.height(4.dp))
                 
                 Text(
-                    text = professional.profession ?: "Professional",
+                    text = professional.profession ?: stringResource(R.string.professional_role),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -684,7 +686,7 @@ private fun ProfessionalCard(
                 ) {
                     Icon(
                         imageVector = AppIcons.Content.star,
-                        contentDescription = "Rating",
+                        contentDescription = stringResource(R.string.rating_desc),
                         tint = StarYellow,
                         modifier = Modifier.size(IconSizes.small)
                     )
@@ -696,7 +698,7 @@ private fun ProfessionalCard(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "(${professional.reviewCount ?: 0} reviews)",
+                        text = stringResource(R.string.reviews_count, professional.reviewCount ?: 0),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -705,7 +707,7 @@ private fun ProfessionalCard(
                 if (professional.experience != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "${professional.experience} years experience",
+                        text = stringResource(R.string.years_experience, professional.experience.toString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
@@ -809,7 +811,7 @@ private fun RecentJobCard(
                 ) {
                     job.budget?.let { budget ->
                         Text(
-                            text = "PEN ${String.format("%.0f", budget)}",
+                            text = stringResource(R.string.currency_pen, String.format("%.0f", budget)),
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),

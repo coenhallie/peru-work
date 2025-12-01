@@ -4,6 +4,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -52,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -87,6 +90,7 @@ fun EditProfileScreen(
     val currentUser by authViewModel.currentUser.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // Form state
     var name by remember { mutableStateOf(currentUser?.name ?: "") }
@@ -129,12 +133,12 @@ fun EditProfileScreen(
     Scaffold(
         topBar = {
             WorkAppTopBar(
-                title = "Edit Profile",
+                title = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.edit_profile_title),
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.back),
                             modifier = Modifier.size(IconSizes.medium)
                         )
                     }
@@ -168,7 +172,7 @@ fun EditProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Profile Photo",
+                        text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.profile_picture_desc),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -182,7 +186,7 @@ fun EditProfileScreen(
                         AsyncImage(
                             model = selectedImageUri ?: currentUser?.profileImageUrl 
                                 ?: "https://via.placeholder.com/150",
-                            contentDescription = "Profile picture",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.profile_picture_desc),
                             modifier = Modifier
                                 .size(120.dp)
                                 .clip(CircleShape)
@@ -214,7 +218,7 @@ fun EditProfileScreen(
                         ) {
                             Icon(
                                 imageVector = AppIcons.Actions.camera,
-                                contentDescription = "Change photo",
+                                contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.change_photo),
                                 tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(IconSizes.small)
                             )
@@ -230,7 +234,7 @@ fun EditProfileScreen(
                             )
                         }
                     ) {
-                        Text("Change Photo")
+                        Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.change_photo))
                     }
                 }
             }
@@ -250,7 +254,7 @@ fun EditProfileScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
-                        text = "Basic Information",
+                        text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.basic_information),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.SemiBold
                         )
@@ -259,7 +263,7 @@ fun EditProfileScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Full Name") },
+                        label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.full_name)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = AppIcons.Content.person,
@@ -278,7 +282,7 @@ fun EditProfileScreen(
                     OutlinedTextField(
                         value = phone,
                         onValueChange = { phone = it },
-                        label = { Text("Phone Number") },
+                        label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.phone)) },
                         leadingIcon = {
                             Icon(
                                 imageVector = AppIcons.Content.phone,
@@ -297,7 +301,7 @@ fun EditProfileScreen(
                     AddressAutofillTextField(
                         value = location,
                         onValueChange = { location = it },
-                        label = "Location",
+                        label = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.location),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -319,7 +323,7 @@ fun EditProfileScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         Text(
-                            text = "Professional Information",
+                            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.professional_information),
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -328,7 +332,7 @@ fun EditProfileScreen(
                         OutlinedTextField(
                             value = craft,
                             onValueChange = { craft = it },
-                            label = { Text("Craft/Profession") },
+                            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.craft_profession)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = AppIcons.Content.work,
@@ -347,7 +351,7 @@ fun EditProfileScreen(
                         OutlinedTextField(
                             value = bio,
                             onValueChange = { bio = it },
-                            label = { Text("Bio") },
+                            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.bio)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = AppIcons.Content.description,
@@ -367,7 +371,7 @@ fun EditProfileScreen(
                         OutlinedTextField(
                             value = hourlyRate,
                             onValueChange = { hourlyRate = it },
-                            label = { Text("Hourly Rate (PEN)") },
+                            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.hourly_rate_pen)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = AppIcons.Content.payment,
@@ -386,7 +390,7 @@ fun EditProfileScreen(
                         OutlinedTextField(
                             value = availability,
                             onValueChange = { availability = it },
-                            label = { Text("Availability") },
+                            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.availability)) },
                             leadingIcon = {
                                 Icon(
                                     imageVector = AppIcons.Content.calendar,
@@ -396,7 +400,7 @@ fun EditProfileScreen(
                             },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
-                            placeholder = { Text("e.g., Monday - Friday, 9am - 5pm") },
+                            placeholder = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.availability_placeholder)) },
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = MaterialTheme.colorScheme.primary,
                                 unfocusedBorderColor = MaterialTheme.colorScheme.outline
@@ -427,7 +431,7 @@ fun EditProfileScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Previous Projects",
+                                text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.previous_projects),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.SemiBold
                                 )
@@ -440,13 +444,13 @@ fun EditProfileScreen(
                                     modifier = Modifier.size(IconSizes.small)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Add")
+                                Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.add))
                             }
                         }
                         
                         if (existingPreviousJobs.isEmpty() && newPreviousJobs.isEmpty()) {
                             Text(
-                                text = "No previous projects added yet.",
+                                text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.no_previous_projects),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -478,7 +482,7 @@ fun EditProfileScreen(
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Delete project",
+                                                    contentDescription = stringResource(R.string.delete_project),
                                                     tint = MaterialTheme.colorScheme.error,
                                                     modifier = Modifier.size(16.dp)
                                                 )
@@ -493,7 +497,7 @@ fun EditProfileScreen(
                                                 items(job.photoUrls) { url ->
                                                     AsyncImage(
                                                         model = url,
-                                                        contentDescription = "Project photo",
+                                                        contentDescription = stringResource(R.string.project_photo),
                                                         modifier = Modifier
                                                             .size(80.dp)
                                                             .clip(MaterialTheme.shapes.small),
@@ -537,7 +541,7 @@ fun EditProfileScreen(
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Delete,
-                                                    contentDescription = "Delete project",
+                                                    contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.delete_project),
                                                     tint = MaterialTheme.colorScheme.error,
                                                     modifier = Modifier.size(16.dp)
                                                 )
@@ -552,7 +556,7 @@ fun EditProfileScreen(
                                                 items(job.photoUris) { uri ->
                                                     AsyncImage(
                                                         model = uri,
-                                                        contentDescription = "Project photo",
+                                                        contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.project_photo),
                                                         modifier = Modifier
                                                             .size(80.dp)
                                                             .clip(MaterialTheme.shapes.small),
@@ -589,13 +593,13 @@ fun EditProfileScreen(
                                 newPreviousJobs = newPreviousJobs,
                                 existingPreviousJobs = existingPreviousJobs
                             )
-                            snackbarHostState.showSnackbar("Profile updated successfully")
+                            snackbarHostState.showSnackbar(context.getString(com.example.workapp.R.string.profile_updated_success))
                             // Wait a moment then navigate back
                             kotlinx.coroutines.delay(500)
                             onNavigateBack()
                         } catch (e: Exception) {
                             snackbarHostState.showSnackbar(
-                                "Failed to update profile: ${e.message}"
+                                context.getString(com.example.workapp.R.string.profile_update_error, e.message)
                             )
                         } finally {
                             isUploading = false
@@ -621,7 +625,7 @@ fun EditProfileScreen(
                     )
                     Spacer(modifier = Modifier.padding(horizontal = 4.dp))
                     Text(
-                        text = "Save Changes",
+                        text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.save_changes),
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
@@ -685,7 +689,7 @@ fun AddProjectContent(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "Add Previous Project",
+            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.add_previous_project),
             style = MaterialTheme.typography.headlineSmall.copy(
                 fontWeight = FontWeight.Bold
             )
@@ -694,7 +698,7 @@ fun AddProjectContent(
         OutlinedTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Project Description") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.project_description)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 5
@@ -702,7 +706,7 @@ fun AddProjectContent(
         
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(
-                text = "Photos (Max 2)",
+                text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.photos_max_2),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -729,7 +733,7 @@ fun AddProjectContent(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Remove",
+                                contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.remove),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -753,7 +757,7 @@ fun AddProjectContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Add,
-                            contentDescription = "Add photo",
+                            contentDescription = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.add_photo),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(32.dp)
                         )
@@ -767,7 +771,7 @@ fun AddProjectContent(
             horizontalArrangement = Arrangement.End
         ) {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.cancel))
             }
             Spacer(modifier = Modifier.width(8.dp))
             Button(
@@ -781,7 +785,7 @@ fun AddProjectContent(
                 },
                 enabled = description.isNotBlank()
             ) {
-                Text("Add Project")
+                Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.add_project_button))
             }
         }
         Spacer(modifier = Modifier.height(24.dp)) 

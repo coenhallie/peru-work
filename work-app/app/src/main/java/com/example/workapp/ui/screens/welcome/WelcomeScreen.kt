@@ -98,21 +98,29 @@ fun WelcomeScreen(
     val credentialManager = remember { CredentialManager.create(context) }
 
     // Define onboarding steps
-    val onboardingSteps = remember {
+    val title1 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_title_1)
+    val desc1 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_desc_1)
+    val title2 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_title_2)
+    val desc2 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_desc_2)
+    val title3 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_title_3)
+    val desc3 = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.onboarding_desc_3)
+
+    // Define onboarding steps
+    val onboardingSteps = remember(title1, desc1, title2, desc2, title3, desc3) {
         listOf(
             OnboardingStep(
-                title = "Find Professionals",
-                description = "Connect instantly with trusted, high-rated professionals for any task you need done.",
+                title = title1,
+                description = desc1,
                 icon = AppIcons.Content.person
             ),
             OnboardingStep(
-                title = "Easy Communication",
-                description = "Chat directly with professionals, share details, and get quotes in minutes.",
+                title = title2,
+                description = desc2,
                 icon = AppIcons.Navigation.chat
             ),
             OnboardingStep(
-                title = "Secure Payments",
-                description = "Pay securely through the app only when you are satisfied with the work.",
+                title = title3,
+                description = desc3,
                 icon = AppIcons.Content.payment
             )
         )
@@ -305,7 +313,7 @@ fun WelcomeScreen(
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "Continue with Google",
+                            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.continue_google),
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
@@ -324,7 +332,7 @@ fun WelcomeScreen(
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
                         Text(
-                            text = "or continue with email",
+                            text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.or_continue_with_email),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                             modifier = Modifier.padding(horizontal = 16.dp)
@@ -356,7 +364,7 @@ fun WelcomeScreen(
                                     modifier = Modifier.size(IconSizes.medium)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Sign in with Email")
+                                Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.sign_in_email))
                             }
                         } else {
                             // Email/Password input form
@@ -374,7 +382,7 @@ fun WelcomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "Don't have an account?",
+                                text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.dont_have_account),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                             )
@@ -385,7 +393,7 @@ fun WelcomeScreen(
                                 }
                             ) {
                                 Text(
-                                    text = "Sign Up",
+                                    text = androidx.compose.ui.res.stringResource(com.example.workapp.R.string.sign_up),
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -415,7 +423,7 @@ private fun SignInForm(
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
-            label = { Text("Email") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.email)) },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Form.email,
@@ -431,7 +439,7 @@ private fun SignInForm(
         OutlinedTextField(
             value = password,
             onValueChange = { password = it },
-            label = { Text("Password") },
+            label = { Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.password)) },
             leadingIcon = {
                 Icon(
                     imageVector = AppIcons.Form.lock,
@@ -443,7 +451,7 @@ private fun SignInForm(
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
                         imageVector = if (passwordVisible) AppIcons.Form.visibility else AppIcons.Form.visibilityOff,
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        contentDescription = if (passwordVisible) androidx.compose.ui.res.stringResource(com.example.workapp.R.string.hide_password) else androidx.compose.ui.res.stringResource(com.example.workapp.R.string.show_password),
                         modifier = Modifier.size(IconSizes.medium)
                     )
                 }
@@ -470,7 +478,7 @@ private fun SignInForm(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
-            Text("Sign In")
+            Text(androidx.compose.ui.res.stringResource(com.example.workapp.R.string.sign_in))
         }
     }
 }

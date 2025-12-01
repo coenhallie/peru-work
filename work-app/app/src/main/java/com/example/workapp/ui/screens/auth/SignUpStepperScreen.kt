@@ -89,6 +89,8 @@ import com.example.workapp.ui.viewmodel.EmailValidationState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import kotlin.math.roundToInt
+import androidx.compose.ui.res.stringResource
+import com.example.workapp.R
 
 @Composable
 fun SignUpStepperScreen(
@@ -159,11 +161,11 @@ fun SignUpStepperScreen(
         ) {
             if (currentStep > 0) {
                 IconButton(onClick = { currentStep-- }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
                 }
             } else {
                 IconButton(onClick = onSwitchToSignIn) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Sign In")
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_sign_in))
                 }
             }
             
@@ -263,12 +265,12 @@ fun SignUpStepperScreen(
                             )
                         } else {
                             // End for client (should not reach here via logic but for safety)
-                            Text("Ready to finish!")
+                            Text(stringResource(R.string.finish))
                         }
                         6 -> if (selectedRole == UserRole.PROFESSIONAL) {
                             ProfilePhotoUploadStep(imageUri, { imageUri = it })
                         } else {
-                            Text("Ready to finish!")
+                            Text(stringResource(R.string.finish))
                         }
                         7 -> AvailabilityStep(
                             availability = availability,
@@ -292,7 +294,7 @@ fun SignUpStepperScreen(
         ) {
             if (currentStep > 0) {
                 TextButton(onClick = { currentStep-- }) {
-                    Text("Previous")
+                    Text(stringResource(R.string.previous))
                 }
             } else {
                 Spacer(modifier = Modifier.width(8.dp))
@@ -355,7 +357,7 @@ fun SignUpStepperScreen(
                     )
                 } else {
                     val isLastStep = if (selectedRole == UserRole.CLIENT) currentStep == 4 else currentStep == 8
-                    Text(if (isLastStep) "Finish" else "Next")
+                    Text(if (isLastStep) stringResource(R.string.finish) else stringResource(R.string.next))
                 }
             }
         }
@@ -374,12 +376,12 @@ fun RoleSelectionStep(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "Who are you?",
+            text = stringResource(R.string.who_are_you),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "Choose how you want to use the app",
+            text = stringResource(R.string.choose_role),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -434,7 +436,7 @@ fun RoleCard(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (role == UserRole.CLIENT) "Client" else "Professional",
+                text = if (role == UserRole.CLIENT) stringResource(R.string.role_client) else stringResource(R.string.role_professional),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -459,7 +461,7 @@ fun BasicInfoStep(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            text = "Basic Information",
+            text = stringResource(R.string.basic_information),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -467,7 +469,7 @@ fun BasicInfoStep(
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
-            label = { Text("Full Name") },
+            label = { Text(stringResource(R.string.full_name)) },
             leadingIcon = { Icon(AppIcons.Form.person, null) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
@@ -476,7 +478,7 @@ fun BasicInfoStep(
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
-            label = { Text("Email") },
+            label = { Text(stringResource(R.string.email)) },
             leadingIcon = { Icon(AppIcons.Form.email, null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             modifier = Modifier.fillMaxWidth(),
@@ -489,7 +491,7 @@ fun BasicInfoStep(
             OutlinedTextField(
                 value = password,
                 onValueChange = onPasswordChange,
-                label = { Text("Password") },
+                label = { Text(stringResource(R.string.password)) },
                 leadingIcon = { Icon(AppIcons.Form.lock, null) },
                 trailingIcon = {
                     IconButton(onClick = { onPasswordVisibilityChange(!passwordVisible) }) {
@@ -515,16 +517,16 @@ fun ContactStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Contact Details",
+            text = stringResource(R.string.contact_details),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
-        Text("How can people reach you?")
+        Text(stringResource(R.string.reach_you))
 
         OutlinedTextField(
             value = phone,
             onValueChange = onPhoneChange,
-            label = { Text("Phone Number") },
+            label = { Text(stringResource(R.string.phone_number)) },
             leadingIcon = { Icon(AppIcons.Form.phone, null) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
             modifier = Modifier.fillMaxWidth(),
@@ -540,7 +542,7 @@ fun LocationStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Where are you based?",
+            text = stringResource(R.string.where_based),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -548,8 +550,8 @@ fun LocationStep(
         AddressAutofillTextField(
             value = location,
             onValueChange = onLocationChange,
-            label = "Address",
-            placeholder = "Start typing your address...",
+            label = stringResource(R.string.address),
+            placeholder = stringResource(R.string.address_placeholder),
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -564,7 +566,7 @@ fun ProfessionalDetailsStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Professional Details",
+            text = stringResource(R.string.professional_details),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -579,8 +581,8 @@ fun ProfessionalDetailsStep(
         OutlinedTextField(
             value = bio,
             onValueChange = onBioChange,
-            label = { Text("Bio") },
-            placeholder = { Text("Tell us about your experience...") },
+            label = { Text(stringResource(R.string.bio)) },
+            placeholder = { Text(stringResource(R.string.bio_placeholder)) },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 5
@@ -604,13 +606,13 @@ fun ProfilePhotoUploadStep(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         Text(
-            text = "Add a Profile Photo",
+            text = stringResource(R.string.add_profile_photo),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         
         Text(
-            text = "This will be your main profile picture that clients see",
+            text = stringResource(R.string.profile_photo_desc_signup),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
             textAlign = TextAlign.Center
@@ -627,7 +629,7 @@ fun ProfilePhotoUploadStep(
             if (imageUri != null) {
                 AsyncImage(
                     model = imageUri,
-                    contentDescription = "Profile Photo",
+                    contentDescription = stringResource(R.string.profile_picture_desc),
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
@@ -640,13 +642,13 @@ fun ProfilePhotoUploadStep(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Tap to upload")
+                    Text(stringResource(R.string.tap_upload))
                 }
             }
         }
         
         Text(
-            text = "Optional - You can skip this step",
+            text = stringResource(R.string.optional_skip),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -672,13 +674,13 @@ fun PreviousJobsStep(
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
-            text = "Previous Work Portfolio",
+            text = stringResource(R.string.previous_work),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
         
         Text(
-            text = "Showcase your previous projects to help clients see your work quality",
+            text = stringResource(R.string.previous_work_desc),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
         )
@@ -718,7 +720,7 @@ fun PreviousJobsStep(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "No previous projects added yet",
+                        text = stringResource(R.string.no_previous_projects),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -735,11 +737,11 @@ fun PreviousJobsStep(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Add Previous Project")
+            Text(stringResource(R.string.add_previous_project))
         }
         
         Text(
-            text = "Optional - You can skip this step or add up to 10 projects",
+            text = stringResource(R.string.optional_skip_projects),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
@@ -797,7 +799,7 @@ fun PreviousJobCard(
                             job.photoUris.forEach { uri ->
                                 AsyncImage(
                                     model = uri,
-                                    contentDescription = "Project photo",
+                                    contentDescription = stringResource(R.string.project_photo),
                                     modifier = Modifier
                                         .size(60.dp)
                                         .clip(RoundedCornerShape(8.dp)),
@@ -811,7 +813,7 @@ fun PreviousJobCard(
                 IconButton(onClick = onDelete) {
                     Icon(
                         Icons.Default.Delete,
-                        contentDescription = "Delete",
+                        contentDescription = stringResource(R.string.delete),
                         tint = MaterialTheme.colorScheme.error
                     )
                 }
@@ -851,13 +853,13 @@ fun AddPreviousJobDialog(
         ) {
             // Header
             Text(
-                text = "Add Previous Project",
+                text = stringResource(R.string.add_previous_project),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
             
             Text(
-                text = "Share details about a project you've completed to showcase your work",
+                text = stringResource(R.string.update_project_details),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -866,13 +868,13 @@ fun AddPreviousJobDialog(
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Project Description") },
-                placeholder = { Text("e.g., Kitchen renovation in Amsterdam - replaced cabinets, countertops, and installed new appliances") },
+                label = { Text(stringResource(R.string.project_description)) },
+                placeholder = { Text(stringResource(R.string.project_desc_placeholder)) },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 4,
                 maxLines = 6,
                 supportingText = {
-                    Text("${description.length}/500 characters")
+                    Text(stringResource(R.string.reviews_count, description.length))
                 }
             )
             
@@ -881,13 +883,13 @@ fun AddPreviousJobDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Project Photos (Optional)",
+                    text = stringResource(R.string.project_photos_optional),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
                 
                 Text(
-                    text = "Add up to 2 photos showing your work (${selectedPhotoUris.size}/2)",
+                    text = stringResource(R.string.add_photos_limit, selectedPhotoUris.size),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -903,7 +905,7 @@ fun AddPreviousJobDialog(
                         ) {
                             AsyncImage(
                                 model = uri,
-                                contentDescription = "Project photo",
+                                contentDescription = stringResource(R.string.project_photo),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .height(120.dp)
@@ -925,7 +927,7 @@ fun AddPreviousJobDialog(
                             ) {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Remove photo",
+                                    contentDescription = stringResource(R.string.remove_photo),
                                     tint = MaterialTheme.colorScheme.onError,
                                     modifier = Modifier.size(18.dp)
                                 )
@@ -950,12 +952,12 @@ fun AddPreviousJobDialog(
                             ) {
                                 Icon(
                                     Icons.Default.AddAPhoto,
-                                    contentDescription = "Add photo",
+                                    contentDescription = stringResource(R.string.add_photo),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(32.dp)
                                 )
                                 Text(
-                                    text = "Add Photo",
+                                    text = stringResource(R.string.add_photo),
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -974,7 +976,7 @@ fun AddPreviousJobDialog(
                     onClick = onDismiss,
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
                 
                 Button(
@@ -986,7 +988,7 @@ fun AddPreviousJobDialog(
                     enabled = description.isNotBlank(),
                     modifier = Modifier.weight(1f)
                 ) {
-                    Text("Add Project")
+                    Text(stringResource(R.string.add_project_button))
                 }
             }
         }
@@ -1012,19 +1014,19 @@ fun AvailabilityStep(
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text(
-            text = "Availability",
+            text = stringResource(R.string.availability),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
-        Text("When are you usually available to work?")
+        Text(stringResource(R.string.availability_desc))
 
         Box(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = availability,
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Availability") },
-                placeholder = { Text("Select your availability") },
+                label = { Text(stringResource(R.string.availability)) },
+                placeholder = { Text(stringResource(R.string.select_availability)) },
                 trailingIcon = {
                     Icon(Icons.Default.ArrowDropDown, contentDescription = null)
                 },
@@ -1057,7 +1059,7 @@ fun AvailabilityStep(
                         .padding(bottom = 32.dp)
                 ) {
                     Text(
-                        text = "Select Availability",
+                        text = stringResource(R.string.select_availability),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -1083,7 +1085,7 @@ fun AvailabilityStep(
                                     Spacer(modifier = Modifier.weight(1f))
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Selected",
+                                        contentDescription = stringResource(R.string.apply_filters),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -1107,15 +1109,15 @@ fun WorkDistanceStep(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
         Text(
-            text = "Work Distance",
+            text = stringResource(R.string.work_distance),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
-        Text("How far are you willing to travel for work?")
+        Text(stringResource(R.string.work_distance_desc))
 
         Column {
             Text(
-                text = "${distance.roundToInt()} km",
+                text = stringResource(R.string.km_unit, distance.roundToInt()),
                 style = MaterialTheme.typography.headlineMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -1130,8 +1132,8 @@ fun WorkDistanceStep(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text("1 km")
-                Text("100 km")
+                Text(stringResource(R.string.km_range_start))
+                Text(stringResource(R.string.km_range_end))
             }
         }
     }
