@@ -4,6 +4,10 @@ import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +20,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -43,7 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -89,6 +96,29 @@ fun WelcomeScreen(
     
     // Initialize Credential Manager
     val credentialManager = remember { CredentialManager.create(context) }
+
+    // Define onboarding steps
+    val onboardingSteps = remember {
+        listOf(
+            OnboardingStep(
+                title = "Find Professionals",
+                description = "Connect instantly with trusted, high-rated professionals for any task you need done.",
+                icon = AppIcons.Content.person
+            ),
+            OnboardingStep(
+                title = "Easy Communication",
+                description = "Chat directly with professionals, share details, and get quotes in minutes.",
+                icon = AppIcons.Navigation.chat
+            ),
+            OnboardingStep(
+                title = "Secure Payments",
+                description = "Pay securely through the app only when you are satisfied with the work.",
+                icon = AppIcons.Content.payment
+            )
+        )
+    }
+    
+    val pagerState = rememberPagerState(pageCount = { onboardingSteps.size })
     
     // Fade in animation
     LaunchedEffect(Unit) {
@@ -218,38 +248,36 @@ fun WelcomeScreen(
                 ) {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.extraLarge,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            tonalElevation = 4.dp
-                        ) {
-                            Icon(
-                                imageVector = AppIcons.Content.build,
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(80.dp)
-                                    .padding(16.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { page ->
+                            OnboardingPage(step = onboardingSteps[page])
                         }
                         
-                        Text(
-                            text = "WorkApp",
-                            style = MaterialTheme.typography.headlineLarge.copy(
-                                fontWeight = FontWeight.ExtraBold
-                            ),
-                            color = MaterialTheme.colorScheme.onBackground
-                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         
-                        Text(
-                            text = "Connect instantly with trusted, high‑rated professionals for any task.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                        // Page Indicator
+                        Row(
+                            Modifier
+                                .wrapContentHeight()
+                                .fillMaxWidth()
+                                .padding(bottom = 8.dp),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            repeat(pagerState.pageCount) { iteration ->
+                                val color = if (pagerState.currentPage == iteration) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                                Box(
+                                    modifier = Modifier
+                                        .padding(2.dp)
+                                        .clip(CircleShape)
+                                        .background(color)
+                                        .size(8.dp)
+                                )
+                            }
+                        }
                     }
                 }
 
@@ -444,5 +472,51 @@ private fun SignInForm(
             }
             Text("Sign In")
         }
+    }
+}
+
+data class OnboardingStep(
+    val title: String,
+    val description: String,
+    val icon: ImageVector
+)
+
+@Composable
+fun OnboardingPage(step: OnboardingStep) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        modifier = Modifier.padding(horizontal = 16.dp)
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraLarge,
+            color = MaterialTheme.colorScheme.primaryContainer,
+            tonalElevation = 4.dp
+        ) {
+            Icon(
+                imageVector = step.icon,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(80.dp)
+                    .padding(16.dp),
+                tint = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+        }
+        
+        Text(
+            text = step.title,
+            style = MaterialTheme.typography.headlineMedium.copy(
+                fontWeight = FontWeight.Bold
+            ),
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center
+        )
+        
+        Text(
+            text = step.description,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            textAlign = TextAlign.Center
+        )
     }
 }
