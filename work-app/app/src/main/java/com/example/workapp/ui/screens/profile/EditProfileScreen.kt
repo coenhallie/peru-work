@@ -48,6 +48,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -59,6 +60,7 @@ import coil.compose.AsyncImage
 import com.example.workapp.ui.components.AddressAutofillTextField
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.data.model.PreviousJob
 import com.example.workapp.ui.screens.auth.PreviousJobItem
@@ -126,15 +128,8 @@ fun EditProfileScreen(
     
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Edit Profile",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                },
+            WorkAppTopBar(
+                title = "Edit Profile",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -143,12 +138,7 @@ fun EditProfileScreen(
                             modifier = Modifier.size(IconSizes.medium)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

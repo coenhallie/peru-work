@@ -31,12 +31,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.ui.viewmodel.JobViewModel
 import com.example.workapp.ui.viewmodel.UpdateJobState
 
@@ -102,36 +104,16 @@ fun EditJobScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column {
-                        Text(
-                            text = "Edit Job Listing",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        Text(
-                            text = "Update your project details",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        )
-                    }
-                },
+            WorkAppTopBar(
+                title = "Edit Job",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(IconSizes.medium)
+                            contentDescription = "Back"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background

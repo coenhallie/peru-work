@@ -49,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -58,6 +59,7 @@ import coil.compose.AsyncImage
 import com.example.workapp.data.model.User
 import com.example.workapp.data.repository.ProfessionalRepository
 import com.example.workapp.ui.components.FullScreenImageViewer
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.theme.StarYellow
@@ -139,13 +141,8 @@ fun ProfessionalDetailScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Professional",
-                        style = MaterialTheme.typography.titleLarge
-                    )
-                },
+            WorkAppTopBar(
+                title = "Professional",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -154,12 +151,7 @@ fun ProfessionalDetailScreen(
                             modifier = Modifier.size(IconSizes.medium)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

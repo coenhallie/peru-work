@@ -44,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +56,7 @@ import com.example.workapp.data.model.ApplicationStatus
 import com.example.workapp.data.model.JobApplication
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.theme.IconSizes
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.ui.viewmodel.AcceptApplicationState
 import com.example.workapp.ui.viewmodel.ApplicationViewModel
 import com.example.workapp.ui.viewmodel.RejectApplicationState
@@ -282,35 +284,16 @@ fun ApplicationsListScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = "Job Applications",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        )
-                        Text(
-                            text = "${applications.size} applications",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        )
-                    }
-                },
+            WorkAppTopBar(
+                title = "Applications",
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Back"
                         )
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background

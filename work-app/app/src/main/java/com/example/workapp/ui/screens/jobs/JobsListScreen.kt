@@ -54,6 +54,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.workapp.data.model.ApplicationStatus
 import com.example.workapp.ui.components.JobImage
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobApplication
 import com.example.workapp.data.model.JobStatus
@@ -176,34 +178,17 @@ fun JobsListScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Column {
-                CenterAlignedTopAppBar(
-                    title = {
-                        Column {
-                            Text(
-                                text = when {
-                                    showMyJobs -> "My Posted Jobs"
-                                    showApplications -> "My Applications"
-                                    else -> "Available Jobs"
-                                },
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            )
-                            Text(
-                                text = when {
-                                    showMyJobs -> "${jobsList.size} jobs posted"
-                                    showApplications -> "${myApplications.size} applications"
-                                    else -> "${jobsList.size} jobs available"
-                                },
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                            )
-                        }
+                WorkAppTopBar(
+                    title = when {
+                        showMyJobs -> "My Posted Jobs"
+                        showApplications -> "My Applications"
+                        else -> "Available Jobs"
                     },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    subtitle = when {
+                        showMyJobs -> "${jobsList.size} jobs posted"
+                        showApplications -> "${myApplications.size} applications"
+                        else -> "${jobsList.size} jobs available"
+                    }
                 )
                 
 

@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Place
@@ -91,6 +92,7 @@ object AppIcons {
         val save = Icons.Filled.Save
         val send = Icons.AutoMirrored.Filled.Send
         val check = Icons.Filled.Check
+        val moreVert = Icons.Filled.MoreVert
     }
     
     /**

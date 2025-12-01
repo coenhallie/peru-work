@@ -30,6 +30,7 @@ import com.example.workapp.data.model.Job
 import com.example.workapp.ui.theme.AppIcons
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.ui.viewmodel.ChatViewModel
+import com.example.workapp.ui.components.WorkAppTopBar
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -84,22 +85,10 @@ fun ChatScreen(
     Scaffold(
         modifier = modifier,
         topBar = {
-            TopAppBar(
-                title = { 
-                    Column {
-                        Text(
-                            text = otherUserName ?: "Chat",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        if (currentRoom != null) {
-                            Text(
-                                text = currentRoom.jobTitle,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                            )
-                        }
-                    }
-                },
+            WorkAppTopBar(
+                title = otherUserName ?: "Chat",
+                subtitle = if (currentRoom != null) currentRoom.jobTitle else null,
+                centered = false,
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(AppIcons.Navigation.back, contentDescription = "Back")
@@ -111,13 +100,7 @@ fun ChatScreen(
                             Text("View Job")
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         },
         bottomBar = {

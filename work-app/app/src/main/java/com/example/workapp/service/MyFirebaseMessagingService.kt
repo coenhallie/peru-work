@@ -66,17 +66,36 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     
     private fun handleDataPayload(data: Map<String, String>) {
         // Handle custom data payload actions (e.g., navigation, background sync)
-        when (data["action"]) {
+        val action = data["action"]
+        Log.d(TAG, "Handling data payload action: $action")
+        
+        when (action) {
             "NEW_MESSAGE" -> {
                 // Handle new message notification
+                val senderName = data["senderName"] ?: "Someone"
+                val messagePreview = data["messageBody"] ?: "Sent you a message"
                 Log.d(TAG, "New message from: ${data["senderId"]}")
+                
+                sendNotification(
+                    title = "New Message from $senderName",
+                    messageBody = messagePreview,
+                    data = data
+                )
             }
             "JOB_APPLICATION" -> {
                 // Handle job application notification
+                val jobTitle = data["jobTitle"] ?: "a job"
+                val applicantName = data["applicantName"] ?: "A candidate"
                 Log.d(TAG, "New application for job: ${data["jobId"]}")
+                
+                sendNotification(
+                    title = "New Job Application",
+                    messageBody = "$applicantName applied for $jobTitle",
+                    data = data
+                )
             }
             else -> {
-                Log.d(TAG, "Unknown action: ${data["action"]}")
+                Log.d(TAG, "Unknown action: $action")
             }
         }
     }

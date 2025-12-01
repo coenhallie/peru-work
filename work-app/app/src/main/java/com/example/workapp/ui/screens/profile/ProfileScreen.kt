@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +58,7 @@ import com.example.workapp.ui.theme.IconSizes
 import com.example.workapp.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 import com.example.workapp.ui.components.SkeletonProfileScreen
+import com.example.workapp.ui.components.WorkAppTopBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -87,21 +89,8 @@ fun ProfileScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Profile",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                },
-
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            WorkAppTopBar(
+                title = "Profile"
             )
         },
         containerColor = MaterialTheme.colorScheme.background

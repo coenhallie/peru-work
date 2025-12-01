@@ -3,6 +3,7 @@ package com.example.workapp.ui.screens.home
 import com.example.workapp.ui.model.JobCategory
 import com.example.workapp.ui.model.jobCategories
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.foundation.clickable
@@ -73,6 +74,7 @@ import com.example.workapp.ui.viewmodel.AuthViewModel
 import com.example.workapp.ui.viewmodel.ProfessionalUiState
 import com.example.workapp.ui.viewmodel.ProfessionalViewModel
 import com.example.workapp.ui.viewmodel.JobViewModel
+import com.example.workapp.ui.components.WorkAppTopBar
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -109,27 +111,12 @@ fun HomeScreen(
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            text = if (isProfessional) "Recent Jobs" else "Find a professional",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            text = if (isProfessional)
-                                "Latest opportunities for you"
-                            else
-                                "Hand-picked professionals near you",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+            WorkAppTopBar(
+                title = if (isProfessional) "Recent Jobs" else "Find a professional",
+                subtitle = if (isProfessional)
+                    "Latest opportunities for you"
+                else
+                    "Hand-picked professionals near you"
             )
         },
         containerColor = MaterialTheme.colorScheme.background

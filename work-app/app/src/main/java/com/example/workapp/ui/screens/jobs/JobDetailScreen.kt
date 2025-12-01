@@ -22,6 +22,8 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
@@ -55,6 +57,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import kotlinx.coroutines.launch
 import com.example.workapp.data.model.Job
 import com.example.workapp.data.model.JobStatus
+import com.example.workapp.ui.components.WorkAppTopBar
 import com.example.workapp.ui.components.ApplicationSubmissionBottomSheet
 import com.example.workapp.ui.components.FullScreenImageViewer
 import com.example.workapp.ui.components.JobImage
@@ -92,6 +95,7 @@ fun JobDetailScreen(
     isProfessional: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToApplications: (String) -> Unit,
+    onEditJob: (String) -> Unit,
     chatRoomId: String? = null,
     modifier: Modifier = Modifier,
     viewModel: JobViewModel = hiltViewModel(),
@@ -107,6 +111,10 @@ fun JobDetailScreen(
     var showApplicationBottomSheet by remember { mutableStateOf(false) }
     var isMapVisible by remember { mutableStateOf(true) }
     var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    var showMenu by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    val isJobOwner = currentUserId != null && job != null && job!!.clientId == currentUserId
 
     // Check application status when screen is opened
     LaunchedEffect(jobId, isProfessional) {
@@ -247,30 +255,61 @@ fun JobDetailScreen(
             }
         },
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Text(
-                        text = "Job Details",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    )
-                },
+            WorkAppTopBar(
+                title = "Job Details",
                 navigationIcon = {
-                    IconButton(onClick = handleNavigateBack) {
+                    IconButton(onClick = onNavigateBack) {
                         Icon(
                             imageVector = AppIcons.Navigation.back,
-                            contentDescription = "Back",
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            contentDescription = "Back"
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                actions = {
+                    if (isJobOwner) {
+                        IconButton(onClick = { showMenu = !showMenu }) {
+                            Icon(
+                                imageVector = AppIcons.Actions.moreVert,
+                                contentDescription = "More options"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Edit Job") },
+                                onClick = {
+                                    showMenu = false
+                                    onEditJob(jobId)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = AppIcons.Actions.edit,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete Job", color = MaterialTheme.colorScheme.error) },
+                                onClick = {
+                                    showMenu = false
+                                    showDeleteDialog = true
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = AppIcons.Actions.delete,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             )
         },
+
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         com.example.workapp.ui.components.FadeInLoadingContent(
@@ -636,7 +675,7 @@ private fun JobDetailContent(
                         label = "Posted by",
                         value = job.clientName
                     )
-                    
+
                     // Show professional info if assigned
                     job.professionalName?.let { professionalName ->
                         DetailRow(

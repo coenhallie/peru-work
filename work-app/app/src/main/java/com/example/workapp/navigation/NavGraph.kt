@@ -411,6 +411,9 @@ fun NavGraph(
                 onNavigateToApplications = { jobId ->
                     navController.navigate(Screen.ApplicationsList.createRoute(jobId))
                 },
+                onEditJob = { jobId ->
+                    navController.navigate(Screen.EditJob.createRoute(jobId))
+                },
                 chatRoomId = chatRoomId
             )
         }
