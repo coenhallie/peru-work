@@ -196,7 +196,7 @@ fun SkeletonProfessionalCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(12.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically
@@ -204,45 +204,70 @@ fun SkeletonProfessionalCard(
                 // Avatar
                 Box(
                     modifier = Modifier
-                        .size(60.dp)
-                        .clip(CircleShape)
+                        .size(100.dp)
+                        .clip(MaterialTheme.shapes.small)
                         .shimmerEffect()
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
-                // Name and Rating
-                Column(modifier = Modifier.weight(1f)) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.6f)
-                            .height(20.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .shimmerEffect()
-                    )
+                // Info
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    // Row 1: Name + Rating placeholder
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(20.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerEffect()
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(16.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerEffect()
+                        )
+                    }
+                    
                     Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Row 2: Profession placeholder
                     Box(
                         modifier = Modifier
-                            .width(100.dp)
+                            .fillMaxWidth(0.8f)
                             .height(14.dp)
                             .clip(RoundedCornerShape(4.dp))
                             .shimmerEffect()
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Tags/Chips
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(3) {
-                    Box(
-                        modifier = Modifier
-                            .width(70.dp)
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .shimmerEffect()
-                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Row 3: Experience + Reviews placeholder
+                    Row {
+                        Box(
+                            modifier = Modifier
+                                .width(60.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerEffect()
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .width(80.dp)
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .shimmerEffect()
+                        )
+                    }
                 }
             }
         }
